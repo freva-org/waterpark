@@ -15,13 +15,13 @@ on:
     paths:
       - "rest-api/**"
       - "landingpage/**"
-      - "dev/**"
+      - ".dev/**"
       - ".github/workflows/smoke.yml"
   pull_request:
     paths:
       - "rest-api/**"
       - "landingpage/**"
-      - "dev/**"
+      - ".dev/**"
       - ".github/workflows/smoke.yml"
   workflow_dispatch:
 
