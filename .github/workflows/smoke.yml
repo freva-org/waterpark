@@ -15,13 +15,13 @@ on:
     paths:
       - "rest-api/**"
       - "landingpage/**"
-      - "dev/**"
+      - ".dev/**"
       - ".github/workflows/smoke.yml"
   pull_request:
     paths:
       - "rest-api/**"
       - "landingpage/**"
-      - "dev/**"
+      - ".dev/**"
       - ".github/workflows/smoke.yml"
   workflow_dispatch:
 
@@ -36,7 +36,7 @@ jobs:
   stack:
     runs-on: ubuntu-latest
     env:
-      COMPOSE: docker compose -f dev/compose.yml
+      COMPOSE: docker compose -f .dev/compose.yml
       # The STAC and data browser pages are vendored by scripts that clone
       # and run npm. They are slow, need network, and nothing here touches
       # those two pages, so skip them and keep this job fast and stable.

@@ -6,6 +6,7 @@ from .cli import cli_app
 
 
 def main() -> None:
+    """Run the cli."""
     cli_app(sys.argv[1:])
 
 

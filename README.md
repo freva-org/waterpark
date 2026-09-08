@@ -3,10 +3,9 @@
 The landing page and backend for [waterpark.dkrz.de](https://waterpark.dkrz.de),
 the HEALPix data hub on S3.
 
-Two things live here. The **landing page** is a mkdocs-material site
+Multiple things live here. The **landing page** is a mkdocs-material site
 published to `gh-pages` and served by nginx on the VM. The **API** is a
-small FastAPI service behind the same nginx, serving `/api`: a double
-opt-in newsletter and the announcement banner.
+small FastAPI service behind the same nginx, serving `/api`.
 
 The `grid-doctor` package and its technical documentation live in
 [freva-org/grid-doctor](https://github.com/freva-org/grid-doctor). A few
@@ -18,7 +17,7 @@ pages are shared between the two sites; see [Shared pages](#shared-pages).
 |---|---|
 | `landingpage/` | mkdocs site: content, theme overrides, build tooling |
 | `rest-api/` | FastAPI service: newsletter, announcements, config |
-| `dev/` | development stack: compose file, proxy config, secrets |
+| `.dev/` | development stack: compose file, proxy config, secrets |
 | `Makefile` | entry point for everything below |
 
 ## Development
@@ -58,8 +57,8 @@ which side to look at.
 ### Sending for real
 
 Optional, and the only configuration this stack has. Write one file per
-setting into `dev/secrets/` — the filename is the setting name, the
-contents are the value. See `dev/secrets/README.md`.
+setting into `.dev/secrets/`. The filename is the setting name, the
+contents are the value.
 
 With that directory empty, which is the default and how CI runs,
 everything goes to the mailbox.
@@ -213,10 +212,6 @@ if you make either a required status check.
 
 The dev stack above is for development only. Production is Ansible plus
 Podman Quadlet with nginx in front.
-
-- `rest-api/nginx-api-snippet.conf` is the config that goes on the VM
-- `rest-api/nginx-local.conf` is a TLS-free copy for checking routing
-  before deploying
 
 The docs deploy from CI to `gh-pages`, which nginx serves from a shallow
 clone.

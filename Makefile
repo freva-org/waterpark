@@ -21,7 +21,7 @@ SHELL := bash
 API_DIR  ?= rest-api
 DOCS_DIR ?= landingpage
 COMPOSE  ?= docker compose
-FILE     := -f dev/compose.yml
+FILE     := -f .dev/compose.yml
 
 .PHONY: help dev up down logs rebuild ps shell announce check clean doctor mail smoke hooks lint
 
