@@ -1,0 +1,71 @@
+name: sync-shared
+
+# Bump the pinned copies of the shared pages from grid-doctor and open a
+# pull request when they have moved. A PR rather than a direct push, so the
+# upstream change is a reviewable diff and the docs build has to pass
+# before it lands.
+#
+# Add a repository_dispatch trigger in grid-doctor if you want this to fire
+# on every upstream change rather than weekly. Weekly is usually enough for
+# prose.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Upstream ref to pin to (default: the configured ref)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Pull the upstream shared docs
+        working-directory: landingpage
+        run: python scripts/sync_shared.py --update ${{ inputs.ref }}
+
+      - name: Open a pull request if anything moved
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet; then
+            echo "shared docs already at the upstream tip"
+            exit 0
+          fi
+
+          branch="chore/sync-shared"
+          pin=$(grep -m1 '^commit' landingpage/shared-sources.toml | cut -d'"' -f2)
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git add landingpage/shared landingpage/shared-sources.toml
+          git commit -m "docs: sync shared pages from grid-doctor@${pin:0:8}"
+          # Force-push the same branch each run, so an already-open PR picks
+          # up the new commit instead of a second PR being opened.
+          git push --force origin "$branch"
+
+          if ! gh pr view "$branch" --json state --jq .state 2>/dev/null | grep -q OPEN; then
+            gh pr create \
+              --base "${{ github.event.repository.default_branch }}" \
+              --head "$branch" \
+              --title "Sync shared docs from grid-doctor" \
+              --body "Automated bump of the \`landingpage/shared/\` pin in \`landingpage/shared-sources.toml\` to \`freva-org/grid-doctor@${pin:0:8}\`.
+
+          These pages are owned upstream. If something here looks wrong, fix it in grid-doctor rather than in this PR."
+          fi

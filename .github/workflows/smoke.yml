@@ -1,0 +1,76 @@
+name: smoke
+
+# End-to-end check of the real stack: brings up the compose file a
+# developer uses, then drives the whole double opt-in flow through the
+# proxy exactly as a browser would.
+#
+# No extra port is exposed for this. The mailbox sits behind the same
+# proxy at /mailbox/, so its API is reachable on :8000 like everything
+# else -- which also means this test exercises the routing, not just the
+# application.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rest-api/**"
+      - "landingpage/**"
+      - "dev/**"
+      - ".github/workflows/smoke.yml"
+  pull_request:
+    paths:
+      - "rest-api/**"
+      - "landingpage/**"
+      - "dev/**"
+      - ".github/workflows/smoke.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  stack:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE: docker compose -f dev/compose.yml
+      # The STAC and data browser pages are vendored by scripts that clone
+      # and run npm. They are slow, need network, and nothing here touches
+      # those two pages, so skip them and keep this job fast and stable.
+      SKIP_ASSET_BUILD: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Start the stack
+        # No configuration step: with dev/secrets empty the API mails the
+        # local mailbox, which is exactly the shape a developer gets.
+        run: $COMPOSE up --build -d
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Run the end-to-end checks
+        # Standard library only, so the package does not need installing.
+        env:
+          WATERPARK_STACK_URL: http://localhost:8000
+        run: pytest -v -m stack rest-api/tests/test_stack.py
+
+      - name: Logs
+        if: always()
+        run: |
+          for svc in proxy docs api mailbox; do
+            echo "::group::$svc"
+            $COMPOSE logs --tail 100 "$svc" || true
+            echo "::endgroup::"
+          done
+
+      - name: Tear down
+        if: always()
+        run: $COMPOSE down --volumes

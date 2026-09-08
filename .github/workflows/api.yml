@@ -1,0 +1,50 @@
+name: api
+
+# The backend. Lint, types and unit tests; the end-to-end check against a
+# running stack is in smoke.yml.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rest-api/**"
+      - ".github/workflows/api.yml"
+  pull_request:
+    paths:
+      - "rest-api/**"
+      - ".github/workflows/api.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: rest-api
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Separate jobs so a formatting nit does not hide a type error.
+        env: [lint, types, test]
+    name: ${{ matrix.env }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # tomllib puts the floor at 3.11; pyproject declares the same.
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install tox
+        run: pip install tox
+
+      - run: tox -e ${{ matrix.env }}

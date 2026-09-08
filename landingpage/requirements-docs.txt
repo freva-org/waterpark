@@ -1,0 +1,16 @@
+# Docs toolchain. This repo is a documentation site, not a Python package,
+# so tox installs from here rather than `-e .[docs]` against a pyproject
+# that would exist only to satisfy pip.
+#
+# mkdocs-material[imaging] pulls cairosvg/pillow for the social plugin.
+# That needs libcairo and pango present on the system: `apt install
+# libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev libz-dev`
+# on the CI runner, or drop the `social` plugin if the cards are not worth it.
+
+mkdocs~=1.6
+mkdocs-material[imaging]~=9.5
+mkdocstrings[python]~=0.27
+pymdown-extensions~=10.11
+
+# scripts/refresh_buckets.py
+s3fs~=2024.10

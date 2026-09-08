@@ -1,0 +1,107 @@
+# freva-org/waterpark
+#
+# Paths are anchored where the thing only ever appears in one place, so a
+# directory that happens to be called "site" or "assets" somewhere else does
+# not get swallowed silently. Generic build noise stays unanchored.
+
+# --- generated documentation ------------------------------------------------
+# .build is assembled by tox [docs-prep] and by the docs container: a farm of
+# symlinks into data/, shared/ and assets/. Never edit anything in there, it
+# is a copy.
+/landingpage/.build/
+/landingpage/site/
+/landingpage/site-data/
+
+# Vendored at build time by scripts/build_stac_browser_docs.py and
+# scripts/build_databrowser_docs.py. Both clone and run npm.
+/landingpage/stac-browser-src/
+/landingpage/databrowser-src/
+
+# NOT ignored, on purpose: landingpage/shared/ holds the pages vendored from
+# grid-doctor by scripts/sync_shared.py. Committing them is the whole point
+# of pinning: offline builds, and upstream changes visible as a normal diff.
+
+# --- local development state ------------------------------------------------
+# sqlite database, rotating log, announcements file.
+*.db
+
+# Superseded by the compose stack, which configures everything through the
+# environment and optional secrets. Listed so an older checkout cannot commit
+# one by accident.
+/rest-api/local.toml
+
+# --- credentials ------------------------------------------------------------
+# /dev/secrets/ is deliberately NOT listed.
+#
+# It carries its own .gitignore that ignores its contents while keeping the
+# directory, its README and that .gitignore tracked. A rule here naming the
+# directory would stop git descending into it, the nested negations would
+# never be evaluated, and the directory would be missing from a fresh clone,
+# leaving the bind mount in dev/compose.yml with nothing to mount.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# --- python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.tox/
+.nox/
+.venv/
+venv/
+.python-version
+
+# tests and coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+coverage_report/
+report.xml
+htmlcov/
+
+# type checkers and linters
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+.pytype/
+
+# --- node -------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.npm/
+
+# --- nix --------------------------------------------------------------------
+# `nix build` symlinks, and direnv's cache.
+result
+result-*
+.direnv/
+
+# --- editors and os ---------------------------------------------------------
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- misc -------------------------------------------------------------------
+*.log
+.cache/
+tmp/
+
+# --- development ------------------------------------------------------------
+.dev/secrets
+!.dev/secrets/.keep

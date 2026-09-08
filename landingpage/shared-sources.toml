@@ -1,0 +1,24 @@
+# Upstream sources for vendored documentation.
+#
+# Pages listed here are owned by another repository and copied in at a
+# pinned commit by scripts/sync_shared.py. Edit them upstream, not here.
+#
+#   python scripts/sync_shared.py --update    bump the pin and pull
+#   python scripts/sync_shared.py --check     CI guard against local edits
+#
+# `commit` is updated automatically by --update; the rest is hand-edited.
+
+[source.shared]
+repo = "freva-org/grid-doctor"
+ref = "main"
+commit = "27511a5ffd3669a703bb392e357ff590d0a588a6"
+source_dir = "docs/shared"
+target_dir = "shared"
+
+# Optional allow-list. Drop it to take whatever upstream has in source_dir;
+# keep it and a new upstream page has to be adopted here deliberately, which
+# also means the nav in mkdocs.yml gets updated in the same commit.
+include = [
+    "high-level-access.md",
+    "technical-decisions.md",
+]

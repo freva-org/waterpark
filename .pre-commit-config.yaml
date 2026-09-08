@@ -1,0 +1,109 @@
+# Fast, local checks before a commit lands. Deliberately a subset of what
+# CI runs: anything slow or needing the network stays in tox, so committing
+# never blocks on a container build or a GitHub fetch.
+#
+#   make hooks              install (once per clone)
+#   make lint               run everything over the whole tree
+#   SKIP=isort git commit   bypass one hook
+#   git commit --no-verify  bypass all of them
+#
+# Pins are exact on purpose: a hook that silently updates would reformat
+# the tree on somebody else's machine and not on yours. `pre-commit
+# autoupdate` bumps them deliberately.
+
+default_install_hook_types: [pre-commit]
+# Applies to every hook, so it holds only what nothing should ever look at.
+# landingpage/shared/ is handled per hook further down: the fixers must
+# leave it alone, because a stripped trailing space there would fail
+# `tox -e shared-check`, but the guard at the bottom has to see it.
+exclude: ^.*\.min\.(js|css)$
+
+repos:
+  # --- the cheap universal ones --------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude: ^landingpage/shared/
+      - id: end-of-file-fixer
+        exclude: ^landingpage/shared/
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        # The docs carry legitimately large images, the biggest being a
+        # 4.4 MB animation. This is here to catch an accidental data dump,
+        # not to police the asset directory.
+        args: [--maxkb=5120]
+      - id: check-yaml
+        # mkdocs.yml uses !ENV and !!python/name:, which are custom tags the
+        # plain YAML loader rejects. Checking the workflows is the point
+        # here anyway.
+        exclude: ^landingpage/mkdocs\.yml$
+      - id: check-toml
+      - id: check-executables-have-shebangs
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: ^landingpage/shared/
+
+  # --- python --------------------------------------------------------------
+  - repo: https://github.com/PyCQA/isort
+    rev: 9.0.1
+    hooks:
+      - id: isort
+        # Same arguments tox -e lint checks with, so a passing commit
+        # cannot fail CI on import order.
+        args: [--profile, black, -t, py313, -l, "79"]
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+        # Scoped to what is currently clean, so the hook can be trusted
+        # rather than routinely skipped.
+        #
+        # Left out for now, both worth a separate pass:
+        #   landingpage/scripts/build_*_docs.py  10 findings, one of them
+        #     an F841 that looks like a real bug (`npm` computed, unused)
+        #   landingpage/scripts/<dataset>/       one-off conversion recipes
+        #     with long lines and two F821 undefined names
+        files: ^(rest-api/.*\.py|landingpage/scripts/(sync_shared|refresh_buckets)\.py)$
+        args:
+          - --max-complexity=10
+          - --ignore=E203,F405,F403,E704,W503,C901,E402
+          - --max-line-length=88
+
+  # --- prose ---------------------------------------------------------------
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.3
+    hooks:
+      - id: codespell
+        # pre-commit runs from the repository root, so it does not pick up
+        # the [tool.codespell] block in rest-api/pyproject.toml. Keep this
+        # list in step with the one there; `deine` and `ist` are German,
+        # from the newsletter templates, and ORCESTRA is a campaign name
+        # that codespell wants to turn into ORCHESTRA.
+        #
+        # The excludes matter: notebooks carry base64 output that produces
+        # nonsense hits, and landingpage/scripts/<dataset>/ holds one-off
+        # conversion recipes whose prose is not worth gating commits on.
+        # The scripts directly under scripts/ are ours and are checked.
+        args:
+          - --quiet-level=2
+          - --ignore-words-list=te,nd,fo,ist,deine,parm,requirer,ORCESTRA,THIRDPARTY
+        exclude: |
+          (?x)^(
+            .*\.(svg|ico|lock|ipynb)|
+            landingpage/assets/.*\.json|
+            landingpage/scripts/[^/]+/.*|
+            landingpage/shared/.*
+          )$
+
+  # --- local ---------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: vendored-shared-docs
+        name: vendored shared docs match the pin
+        language: system
+        pass_filenames: false
+        files: ^landingpage/(shared/|shared-sources\.toml|shared\.lock)
+        entry: python3 landingpage/scripts/sync_shared.py --check

@@ -1,0 +1,100 @@
+name: docs
+
+# The landing page. Builds on every PR that touches it, and publishes to
+# gh-pages from main. `workflow_dispatch` lets you rebuild and republish
+# from the Actions tab without pushing anything, which is what you want
+# after a shared-docs sync or when the S3 bucket listing has changed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "landingpage/**"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "landingpage/**"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Publish to gh-pages as well as building"
+        type: boolean
+        default: true
+
+concurrency:
+  # Queue rather than cancel on main: two pushes in quick succession would
+  # otherwise race for the gh-pages branch and one would be lost. PRs only
+  # build, so cancelling those is free.
+  group: docs-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    # tox.ini and mkdocs.yml live here, not at the repository root.
+    working-directory: landingpage
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `mkdocs gh-deploy` needs real history, not a depth-1 clone.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install cairo for the social plugin
+        # mkdocs-material[imaging] builds the social cards with cairosvg.
+        # Without these the plugin warns on every page and --strict fails.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev
+        working-directory: .
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Verify the vendored shared docs match the pin
+        # Fails if someone edited landingpage/shared/ directly. Those pages
+        # are owned by grid-doctor; a local change would be silently
+        # reverted by the next sync.
+        run: tox -e shared-check
+
+      - name: Build
+        run: tox -e docs
+
+      - name: Publish to gh-pages
+        if: >-
+          github.ref == 'refs/heads/main' &&
+          github.event_name != 'pull_request' &&
+          (github.event_name != 'workflow_dispatch' || inputs.deploy)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # --no-history keeps the branch a single commit. The VM does a
+          # shallow clone that only ever pulls, so accumulated history is
+          # pure cost and the built site is large and mostly binary.
+          tox -e docs-deploy -- --message "docs: ${{ github.sha }}"
+
+      - name: Upload the built site
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: landingpage/site/
+          retention-days: 7

@@ -1,0 +1,35 @@
+# Development image for the Waterpark API.
+#
+# Not the deployment image. This one installs the package editable so the
+# bind-mounted source at /work/src is the live code, and runs uvicorn with
+# autoreload. The production image will want a non-root user, no reload,
+# and a pinned dependency set.
+
+FROM docker.io/library/python:3.12-slim
+
+# tomllib needs 3.11+, which the project already declares.
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /work
+
+# Dependencies first, so editing source does not invalidate this layer.
+# psycopg2-binary and python-multipart ship wheels, so no compiler needed.
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN pip install --no-cache-dir -e ".[tests]"
+
+# Writable state: sqlite database, rotating log, announcements file. A
+# named volume is mounted here at runtime; creating it now means the
+# container still starts if someone runs it without one.
+RUN mkdir -p /work/.dev/logs
+
+EXPOSE 8080
+
+# --reload-dir rather than bare --reload: without it watchfiles walks
+# /work including the .dev volume, and every log write triggers a reload.
+CMD ["python", "-m", "uvicorn", "waterpark_api.main:app", \
+     "--host", "0.0.0.0", "--port", "8080", \
+     "--reload", "--reload-dir", "/work/src"]

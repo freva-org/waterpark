@@ -1,0 +1,15 @@
+[email_server]
+default = "posteo.de"
+
+[email_port]
+default = 587
+type = "integer"
+
+[email_user]
+default = "martin.bergemann@posteo.net"
+
+[email_password]
+default = "Schw4r!zk0pff"
+
+[email_from_address]
+default = "martin.bergemann@posteo.org"

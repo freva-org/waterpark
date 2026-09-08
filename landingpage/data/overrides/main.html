@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{#
+  This file is hand-maintained. Nothing generates it, and nothing should:
+  the previous version was rewritten wholesale by scripts/refresh_buckets.py
+  to inject an announcement, which meant any other block added here was
+  silently deleted on the next bucket refresh, and clearing a notice needed
+  a workflow run plus a rebuild.
+
+  Announcements are now fetched at runtime from /api/announcements; see
+  assets/waterpark-announce.js.
+#}
+
+{# Mount point only. The script fills it and reveals the bar; if the API is
+   unreachable the bar stays collapsed. See assets/waterpark-announce.css. #}
+{% block announce %}
+  <div data-wp-announce hidden></div>
+{% endblock %}
+
+{# The signup form used to sit here as a band above the footer, which read
+   as a second footer rather than part of one. It now lives on the
+   newsletter page, linked from the real footer via `copyright` in
+   mkdocs.yml. #}
+
+{# In production nginx serves the site and the API from one origin, so the
+   widgets post to a relative path and this emits nothing. In development
+   the docs are on :8000 and the API on :8080, so dev.sh sets WP_API_BASE
+   and mkdocs passes it through via `!ENV`. #}
+{% block scripts %}
+  {% if config.extra.api_base %}
+    <script>window.WP_API_BASE = {{ config.extra.api_base | tojson }};</script>
+  {% endif %}
+  {{ super() }}
+{% endblock %}

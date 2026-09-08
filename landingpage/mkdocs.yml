@@ -1,0 +1,143 @@
+theme:
+  name: material
+  custom_dir: data/overrides
+  logo: assets/logo-512.png
+  favicon: assets/favicon.ico
+  icon:
+    admonition:
+      example: material/database
+    previous: fontawesome/solid/angle-left
+    next: fontawesome/solid/angle-right
+
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.footer
+    - toc.integrate
+    - search.highlight
+    - search.suggest
+
+plugins:
+  - search
+  - social:
+      cards_layout_options:
+        background_image: assets/modis-aqua.png
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_root_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            merge_init_into_class: true
+            scoped_crossrefs: true
+            relative_crossrefs: true
+
+markdown_extensions:
+  - admonition
+  - footnotes
+  - pymdownx.details
+  - md_in_html
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tasklist:
+      custom_checkbox: true  # clickable checkboxes in roadmap
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.arithmatex:
+      generic: true
+  - tables
+  - attr_list
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.blocks.caption
+  - toc:
+      permalink: true
+
+extra_css:
+  - assets/styles.css
+  - assets/waterpark-tree.css
+  - assets/stac-browser.css
+  - assets/databrowser.css
+  - assets/waterpark-newsletter.css
+  - assets/waterpark-announce.css
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  - assets/stac-browser-loader.js
+  - assets/databrowser-loader.js
+  - assets/waterpark-tree.js
+  - assets/waterpark-inspector.js
+  - assets/waterpark-newsletter.js
+  - assets/waterpark-announce.js
+
+site_name: Waterpark
+site_description: The HEALPix Data Hub on s3
+site_url: https://waterpark.dkrz.de
+site_dir: site
+docs_dir: .build/data
+
+copyright: >
+  Need support? <a href="mailto:waterpark@support.dkrz.de">waterpark@support.dkrz.de</a>
+  &nbsp;&middot;&nbsp;
+  <a href="/newsletter/">Subscribe to the newsletter</a>
+
+extra:
+  # Empty in production: nginx serves the site and the API on one origin,
+  # so the widgets use a relative path. `make dev` sets WP_API_BASE.
+  api_base: !ENV [WP_API_BASE, ""]
+  # DKRZ Datenschutzerklärung; fills the consent line under the signup form.
+  privacy_url: ""
+  social:
+    - icon: material/email
+      link: mailto:waterpark@support.dkrz.de
+      name: Support - waterpark@support.dkrz.de
+
+nav:
+  - Overview: index.md
+  - Data Browser: databrowser.md
+  - STAC Browser: stac-browser.md
+  - Storage Concepts:
+      - HEALPix in Zarr on S3: storage_concepts/index.md
+      - Why HEALPix?: storage_concepts/why-healpix.md
+      - Why Zarr and S3?: storage_concepts/zarr-and-s3.md
+  - Technical Decisions: technical-decisions.md
+  - Operations :
+      - Working with data data: high-level-access.md
+      - Remapping and benchmark: appendix-remapping-benchmark.md
+  - Tools: tools.md
+# The override template lives inside the tree that gets copied to
+# .build/data, so it must stay excluded or the raw Jinja ships as a page.
+exclude_docs: |
+  overrides/**
+
+# Reachable, and linked from the footer, but deliberately not a nav tab.
+# Without this, --strict fails the build on a page that is not in the nav.
+not_in_nav: |
+  newsletter.md
