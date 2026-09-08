@@ -22,6 +22,7 @@ import uvicorn
 from rich import print as pprint
 from rich.markdown import Markdown
 from rich_argparse import ArgumentDefaultsRichHelpFormatter
+
 from waterpark_api import __version__
 
 from .config import get_logger
