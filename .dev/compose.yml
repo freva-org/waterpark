@@ -1,3 +1,4 @@
+---
 # Waterpark development stack.
 #
 #   docker compose up          (or: podman-compose up)
@@ -51,8 +52,10 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
     depends_on:
-      - api
-      - docs
+      api:
+        condition: service_healthy
+      docs:
+        condition: service_healthy
     restart: unless-stopped
 
   # --- the API -------------------------------------------------------------
@@ -114,6 +117,12 @@ services:
       WATERPARK_EMAIL_PASSWORD_FILE: /run/secrets/email_password
       WATERPARK_EMAIL_FROM_ADDRESS_FILE: /run/secrets/email_from_address
       WATERPARK_EMAIL_FROM_NAME_FILE: /run/secrets/email_from_name
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/health').read()"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     restart: unless-stopped
 
   # --- the docs ------------------------------------------------------------
@@ -142,6 +151,12 @@ services:
       # Set to 1 to skip the npm vendoring of the STAC and data browsers.
       # Much faster to start; the two pages that embed them will 404.
       SKIP_ASSET_BUILD: "${SKIP_ASSET_BUILD:-0}"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000').read()"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
     restart: unless-stopped
 
   # --- outgoing mail, caught not delivered ---------------------------------
