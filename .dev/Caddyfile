@@ -1,0 +1,70 @@
+# Single origin for development.
+#
+# Everything the browser touches comes from http://localhost:8000, which is
+# how production works behind nginx. That removes the whole class of bugs
+# where the API and the pages disagree about where the other one lives:
+# no CORS preflight, no WP_API_BASE injected into the built HTML, and
+# base_url in local.toml is one value rather than two.
+#
+# Caddy is used here rather than nginx for one concrete reason: mkdocs'
+# live reload runs over a websocket, and reverse_proxy handles the Upgrade
+# handshake by itself. In nginx you have to set proxy_set_header Upgrade
+# and Connection manually, and forgetting kills live reload silently while
+# everything else still looks fine.
+#
+# Listens on :80 inside the container network. The host port is decided
+# entirely by the `ports:` mapping in compose.yml, so there is one place to
+# change it rather than two that have to agree.
+#
+# The production config is a different file for a different job. See
+# rest-api/nginx-api-snippet.conf, which is what actually goes on the VM.
+
+{
+	# No admin API and no automatic HTTPS: this only ever listens on
+	# localhost and there is nothing to get a certificate for.
+	admin off
+	auto_https off
+}
+
+:80 {
+	log {
+		output stdout
+		format console
+	}
+
+	# Order matters: the API path has to be matched before the catch-all.
+	handle /api/* {
+		reverse_proxy api:8080 {
+			# The API reads this to record where a confirmation came
+			# from, as proof of consent. Without it every subscriber
+			# looks like it came from the proxy's container address.
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# The mailbox, so the whole stack needs one published port. Mailpit is
+	# told its prefix with MP_WEBROOT, otherwise its own links point at /.
+	handle /mailbox/* {
+		reverse_proxy mailbox:8025
+	}
+
+	handle {
+		# mkdocs serve, including its live reload websocket.
+		reverse_proxy docs:8000
+	}
+
+	handle_errors {
+		respond `waterpark dev proxy: {err.status_code} {err.status_text}
+
+This response came from Caddy, not from the application. A 502 here means
+the upstream container is not answering; check with:
+
+  docker compose -f dev/compose.yml ps
+  docker compose -f dev/compose.yml logs docs
+  docker compose -f dev/compose.yml logs api
+
+A 404 you see in the browser that does NOT carry this text came from
+mkdocs or from the API, which means the proxy is working fine.
+` {err.status_code}
+	}
+}

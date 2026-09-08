@@ -1,0 +1,164 @@
+# Waterpark development stack.
+#
+#   docker compose up          (or: podman-compose up)
+#
+#   http://localhost:8000           the site, with /api on the same origin
+#   http://localhost:8000/mailbox/  mailpit, catches every outgoing mail
+#
+# One published port. Everything else talks over the `waterpark` bridge by
+# service name, so nothing but the proxy is reachable from the host and
+# development cannot accidentally stop being same-origin.
+#
+# The point of the proxy is that dev is *same-origin*, exactly like
+# production behind nginx. No CORS, no injected WP_API_BASE, and base_url
+# in the config is one value rather than a dev-only split between the page
+# origin and the API origin.
+#
+# Source directories are mounted read-only; everything the containers write
+# goes to named volumes, so nothing here can leave root-owned files in your
+# checkout under rootless podman or rootless docker.
+#
+# Nothing to set up. With no secrets present the stack sends every mail to
+# the local mailbox, which is exactly how it runs in CI. To send through a
+# real account instead, drop files into dev/secrets/ -- that is the only
+# configuration step there is, and it is optional.
+#
+# The `z` mount flag relabels for SELinux. It is a no-op where SELinux is
+# not enforcing, so it is safe to leave on.
+
+name: waterpark-dev
+
+# One user-defined bridge. Compose would create one implicitly, but naming
+# it makes the topology explicit: every service talks to every other by
+# service name over this network, and the only thing crossing to the host
+# is the proxy's port publish below.
+networks:
+  waterpark:
+    driver: bridge
+
+services:
+
+  # --- single entry point --------------------------------------------------
+  proxy:
+    image: docker.io/library/caddy:2-alpine
+    networks: [waterpark]
+    # Caddy listens on the standard :80 inside the network and only the
+    # host mapping decides where you reach it. The previous version used
+    # 8000 on both sides, which made three different 8000s in one file
+    # (host, proxy, docs) and was needlessly confusing to read.
+    ports:
+      - "8000:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
+    depends_on:
+      - api
+      - docs
+    restart: unless-stopped
+
+  # --- the API -------------------------------------------------------------
+  api:
+    networks: [waterpark]
+    build:
+      context: ../rest-api
+      dockerfile: Containerfile.dev
+    volumes:
+      # Editable install points at /work/src, so this mount is the live code.
+      - ../rest-api/src:/work/src:ro,z
+      - api-state:/work/.dev
+      # Secrets as files, the interface every container runtime already
+      # speaks. A plain directory here so the stack starts whether or not
+      # anything is in it; swap it for a compose `secrets:` block or
+      # `podman secret` in CI without the application noticing, because
+      # both land in the same place.
+      - ./secrets:/run/secrets:ro,z
+    environment:
+      # No config file anywhere: the whole dev configuration is right here,
+      # and the only thing that can override it is a mounted secret.
+      #
+      # base_url and api_url: Caddy puts pages and API on one origin, so
+      # api_url stays empty and falls back to base_url, exactly as in
+      # production. cors_origins stays empty for the same reason.
+      WATERPARK_BASE_URL: http://localhost:8000
+      WATERPARK_DB_TYPE: sqlite
+      WATERPARK_DB_NAME: /work/.dev/waterpark
+      WATERPARK_LOGDIR: /work/.dev/logs
+      WATERPARK_ANNOUNCEMENTS_PATH: /work/.dev/announcements.toml
+      # The app logger defaults to ERROR, which hides every "verification
+      # sent" and "address rejected" line. 2 is INFO, 3 is DEBUG.
+      VERBOSITY: "2"
+
+      # Mail. These defaults point at the mailbox container, which accepts
+      # everything and delivers nothing, so the double opt-in flow can be
+      # exercised without mailing a real person. This is also the shape CI
+      # runs in.
+      WATERPARK_EMAIL_SERVER: mailbox
+      WATERPARK_EMAIL_PORT: "1025"
+      WATERPARK_EMAIL_DISABLED: "0"
+
+      # ... unless a secret says otherwise. Each <VAR>_FILE names a path;
+      # if the file exists and is non-empty its contents win over the
+      # variable above, and if it does not exist the variable stands. That
+      # is what makes dev/secrets/ optional. Put a file there named after
+      # the setting to override it:
+      #
+      #   dev/secrets/email_server        posteo.de
+      #   dev/secrets/email_port          587
+      #   dev/secrets/email_user          you@posteo.org
+      #   dev/secrets/email_password      an app-specific password
+      #   dev/secrets/email_from_address  you@posteo.org
+      #
+      # from_address matters: most providers reject a From they do not own.
+      WATERPARK_EMAIL_SERVER_FILE: /run/secrets/email_server
+      WATERPARK_EMAIL_PORT_FILE: /run/secrets/email_port
+      WATERPARK_EMAIL_USER_FILE: /run/secrets/email_user
+      WATERPARK_EMAIL_PASSWORD_FILE: /run/secrets/email_password
+      WATERPARK_EMAIL_FROM_ADDRESS_FILE: /run/secrets/email_from_address
+      WATERPARK_EMAIL_FROM_NAME_FILE: /run/secrets/email_from_name
+    restart: unless-stopped
+
+  # --- the docs ------------------------------------------------------------
+  docs:
+    networks: [waterpark]
+    build:
+      context: ../landingpage
+      dockerfile: Containerfile.dev
+    volumes:
+      - ../landingpage/data:/work/data:ro,z
+      - ../landingpage/shared:/work/shared:ro,z
+      - ../landingpage/assets:/work/assets:ro,z
+      - ../landingpage/scripts:/work/scripts:ro,z
+      - ../landingpage/mkdocs.yml:/work/mkdocs.yml:ro,z
+      # mkdocs needs one flat docs_dir, assembled from the three source
+      # trees above. A volume rather than a bind mount so the symlink farm
+      # and the vendored browser builds never touch your checkout.
+      - docs-build:/work/.build
+      - npm-cache:/root/.npm
+    environment:
+      # Without this the build scripts resolve the repo root to the parent
+      # of the checkout: they still assume the pre-flatten docs/scripts
+      # layout and compute SCRIPT_DIR.parents[1].
+      GRID_DOCTOR_ROOT: /work
+      WATERPARK_BASE_PATH: /
+      # Set to 1 to skip the npm vendoring of the STAC and data browsers.
+      # Much faster to start; the two pages that embed them will 404.
+      SKIP_ASSET_BUILD: "${SKIP_ASSET_BUILD:-0}"
+    restart: unless-stopped
+
+  # --- outgoing mail, caught not delivered ---------------------------------
+  mailbox:
+    image: docker.io/axllent/mailpit:latest
+    networks: [waterpark]
+    environment:
+      # Served under /mailbox by the proxy, so there is exactly one port
+      # published on the host. Mailpit needs to know its own prefix or it
+      # generates absolute links back to /.
+      MP_WEBROOT: /mailbox
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+      MP_MAX_MESSAGES: "500"
+    restart: unless-stopped
+
+volumes:
+  api-state:
+  docs-build:
+  npm-cache:
