@@ -67,7 +67,7 @@ storage.
      data-mode="live"
      data-endpoint="https://s3.waterpark.dkrz.de"
      data-buckets="cmip6,cordex,dyamond,earthcare,eerie,era5,icdc,icon-dream,nextgems,orchestra,palmod"
-     data-meta="https://raw.githubusercontent.com/freva-org/grid-doctor/main/docs/assets/waterpark-datasets.json"></div>
+     data-meta="assets/waterpark-datasets.json"></div>
 
 ## What makes the data useful
 
