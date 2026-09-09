@@ -18,25 +18,52 @@ exist, which the dataset tree renders.
 """
 
 from __future__ import annotations
-
+import logging
 import argparse
 import json
-import logging
 import os
 import sys
 from pathlib import Path
 
-import s3fs
-
 HERE = Path(__file__).resolve().parent
-# scripts/ sits next to assets/ since the docs tree was flattened; this
-# used to be HERE.parent.parent / "docs" / "assets".
-DEFAULT_OUT = HERE.parent / "assets" / "waterpark-datasets.json"
-
+DEFAULT_OUT = HERE.parent.parent / "docs" / "assets" / "waterpark-datasets.json"
 logger = logging.getLogger(__name__)
+#: Override directory registered as ``theme.custom_dir`` in
+#: mkdocs.data.yml (docs/data/overrides). NOTE: this lives inside the
+#: docs tree, so it must stay listed under ``exclude_docs`` -- otherwise
+#: the raw Jinja template is shipped as a page of the built site.
+OVERRIDE_FILE = HERE.parent.parent / "docs" / "data" / "overrides" / "main.html"
 
 
-def list_buckets(endpoint: str, key: str, secret: str) -> set[str]:
+def render_announcement(text: str, target: Path = OVERRIDE_FILE) -> None:
+    """Mirror *text* into the announce block; empty text clears it.
+
+    Written unconditionally so that clearing the variable removes the
+    banner on the next run. The message is wrapped in ``{% raw %}`` so
+    stray braces in it cannot break the Jinja build, and no
+    ``str.format`` touches user text (a literal ``{`` would raise).
+    """
+    if text:
+        body = (
+            '{% extends "base.html" %}\n\n'
+            "{% block announce %}\n"
+            "  {% raw %}" + text + "{% endraw %}\n"
+            "{% endblock %}\n"
+        )
+    else:
+        body = '{% extends "base.html" %}\n'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not target.exists() or target.read_text() != body:
+        target.write_text(body)
+        print(
+            f"announcement updated: {text!r}" if text else "announcement cleared",
+            file=sys.stderr,
+        )
+
+
+def list_buckets(endpoint: str, key: str, secret: str) -> list[str]:
+    import s3fs
+
     fs = s3fs.S3FileSystem(
         key=key, secret=secret, client_kwargs={"endpoint_url": endpoint}
     )
@@ -47,15 +74,15 @@ def list_buckets(endpoint: str, key: str, secret: str) -> set[str]:
             names = [i.strip("/").split("/")[-1] for i in items if i.strip("/")]
             if names:
                 break
-        except Exception as error:
-            logger.debug("listing %r failed: %s", root, error)
+        except Exception:
             continue
     if not names:
-        raise SystemExit(
+        logger.warning(
             f"could not list buckets from {endpoint} "
-            "(check admin credentials / gateway permissions)"
+            f"(check admin credentials / gateway permissions)"
         )
-    return set(names)
+        sys.exit(0)
+    return sorted(names)
 
 
 def main() -> None:
@@ -64,11 +91,6 @@ def main() -> None:
     )
     ap.add_argument("--endpoint", default="https://s3.waterpark.dkrz.de")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
-    ap.add_argument(
-        "--check",
-        action="store_true",
-        help="Report what would change and exit non-zero, without writing.",
-    )
     args = ap.parse_args()
 
     key = os.environ.get("WATERPARK_S3_KEY")
@@ -78,53 +100,41 @@ def main() -> None:
             "set WATERPARK_S3_KEY and WATERPARK_S3_SECRET in the environment"
         )
 
+    # Blacklist
     blacklist = {
         b.strip()
         for b in os.environ.get("WATERPARK_BUCKET_BLACKLIST", "").split(",")
         if b.strip()
     }
-    buckets = list_buckets(args.endpoint, key, secret) - blacklist
-
+    buckets = [
+        b
+        for b in list_buckets(args.endpoint, key, secret)
+        if b not in blacklist
+    ]
+    # check if the JSON is already there.
     existing: dict = {}
     if args.out.exists():
         try:
             existing = json.loads(args.out.read_text()).get("datasets", {})
-        except (json.JSONDecodeError, OSError) as error:
-            logger.warning("ignoring unreadable %s: %s", args.out, error)
+        except (json.JSONDecodeError, OSError):
             existing = {}
 
-    # Keep hand-written descriptions, add new buckets bare, drop the rest.
-    datasets = {b: existing.get(b, {"title": b}) for b in sorted(buckets)}
+    # Reconcile: keep existing descriptions add new buckets bare, drop the rest.
+    datasets = {b: existing.get(b, {"title": b}) for b in buckets}
 
-    added = sorted(buckets - set(existing))
-    removed = sorted(set(existing) - buckets)
+    added = [b for b in buckets if b not in existing]
+    removed = [b for b in existing if b not in buckets]
 
-    # `buckets` is a set, which json.dumps cannot serialise: the previous
-    # version raised TypeError here and never wrote the file. Sorting also
-    # makes the output stable, so an unchanged listing produces no diff.
-    payload = {"buckets": sorted(buckets), "datasets": datasets}
-    body = json.dumps(payload, indent=2) + "\n"
-
-    current = args.out.read_text() if args.out.exists() else None
-    if args.check:
-        if current == body:
-            print("dataset listing is up to date", file=sys.stderr)
-            return
-        print(f"{args.out} is stale", file=sys.stderr)
-        if added:
-            print(f"  would add: {', '.join(added)}", file=sys.stderr)
-        if removed:
-            print(f"  would remove: {', '.join(removed)}", file=sys.stderr)
-        raise SystemExit(1)
-
+    payload = {"buckets": buckets, "datasets": datasets}
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(body)
+    args.out.write_text(json.dumps(payload, indent=2) + "\n")
 
     print(f"wrote {args.out}  ({len(buckets)} buckets)", file=sys.stderr)
     if added:
         print(f"added (no description): {', '.join(added)}", file=sys.stderr)
     if removed:
         print(f"removed: {', '.join(removed)}", file=sys.stderr)
+    render_announcement(os.getenv("WATERPARK_ANNOUNCEMENT", "").strip())
 
 
 if __name__ == "__main__":
