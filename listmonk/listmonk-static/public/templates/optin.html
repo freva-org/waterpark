@@ -1,0 +1,21 @@
+{{ define "optin" }}
+{{ template "header" . }}
+<section>
+  <h1>Confirm your subscription</h1>
+  <p>Thank you for your interest in the Waterpark newsletter.</p>
+  <p>Confirm below to receive occasional updates about new datasets and changes to the hub.</p>
+  <form method="post" class="optin-form">
+    {{ range $i, $l := .Data.Lists }}
+    <input type="hidden" name="l" value="{{ $l.UUID }}">
+    {{ end }}
+    <input type="hidden" name="confirm" value="true">
+    <p class="wp-actions">
+      <button type="submit" class="button" id="btn-unsub">Confirm subscription</button>
+    </p>
+  </form>
+  <aside class="wp-notice">
+    <p>You can unsubscribe at any time using the link in our emails.</p>
+  </aside>
+</section>
+{{ template "footer" . }}
+{{ end }}

@@ -1,5 +1,15 @@
 /* Waterpark newsletter signup (double opt-in).
  *
+ * Posts to /api/newsletter/subscribe, which nginx rewrites to listmonk's
+ * /api/public/subscription. The rewrite keeps listmonk's URL shape out of
+ * the built site and keeps the request same-origin, so no CORS.
+ *
+ * listmonk needs the list UUID with every request. It is set once in
+ * mkdocs.yml under `extra.list_uuid` and emitted by data/overrides/
+ * main.html as window.WP_LIST_UUID. The UUID is public by design -- it is
+ * what public subscription forms are built from -- so it is fine in the
+ * page source.
+ *
  * Mounts on any element carrying `data-wp-newsletter`:
  *
  *   <div data-wp-newsletter data-variant="footer"></div>
@@ -19,13 +29,20 @@
     placeholder: "you@example.org",
     cta: "Send confirmation link",
     pending: "Sending...",
-    ok: "Check your inbox. Click the link in the email to confirm; the link is valid for 48 hours.",
+    ok: "Check your inbox and click the link in the email to confirm.",
+    added: "You are on the list.",
     badEmail: "That address does not look right. Check it and try again.",
     failed: "Could not reach the server. Try again in a moment.",
+    unconfigured:
+      "Signup is not configured on this page. Please write to " +
+      "waterpark@support.dkrz.de instead.",
   };
 
   const apiBase = (host) =>
     host.getAttribute("data-api") || window.WP_API_BASE || "";
+
+  const listUuid = (host) =>
+    host.getAttribute("data-list") || window.WP_LIST_UUID || "";
 
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
@@ -119,24 +136,37 @@
       const restore = btn.textContent;
       btn.textContent = DEFAULTS.pending;
 
-      const body = new URLSearchParams({
-        email,
-        website: "",
-        language: (document.documentElement.lang || "en").slice(0, 2),
-      });
+      const uuid = listUuid(host);
+      if (!uuid) {
+        // Better than posting and getting listmonk's "no lists selected"
+        // back: that reads like the address was wrong.
+        say(DEFAULTS.unconfigured, "err");
+        btn.disabled = false;
+        input.disabled = false;
+        btn.textContent = restore;
+        return;
+      }
 
       try {
         const res = await fetch(apiBase(host) + "/api/newsletter/subscribe", {
           method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body,
+          headers: { "Content-Type": "application/json" },
+          // listmonk fills the name from the local part when it is absent,
+          // so we do not ask for one.
+          body: JSON.stringify({ email, list_uuids: [uuid] }),
         });
         const data = await res.json().catch(() => ({}));
+
         if (res.ok) {
           row.hidden = true;
-          say(DEFAULTS.ok, "ok");
+          // has_optin is false when the list is single opt-in, in which
+          // case nothing is sent and telling people to check their inbox
+          // would be a lie.
+          const optin = !data.data || data.data.has_optin !== false;
+          say(optin ? DEFAULTS.ok : DEFAULTS.added, "ok");
           return;
         }
+        // Echo puts the reason in `message`. It is already a sentence.
         say(data.message || DEFAULTS.badEmail, "err");
       } catch (e) {
         say(DEFAULTS.failed, "err");
@@ -159,90 +189,13 @@
     });
   }
 
-  /* ---- confirmation / unsubscribe landing page ---------------------- */
-
-  const STATUS = {
-    success: {
-      kind: "ok",
-      title: "Subscription confirmed",
-      body: "You are on the list. Every email we send carries an unsubscribe link.",
-    },
-    expired: {
-      kind: "err",
-      title: "That link has expired",
-      body: "Confirmation links are valid for 48 hours. Sign up again to get a fresh one.",
-    },
-    invalid: {
-      kind: "err",
-      title: "That link is not valid",
-      body: "It may already have been used. Sign up again to get a fresh link.",
-    },
-  };
-
-  function mountStatus(host) {
-    const q = new URLSearchParams(window.location.search);
-    const status = q.get("status");
-    const token = q.get("token");
-    const action = q.get("action");
-
-    host.classList.add("wp-nl-panel");
-
-    if (status && STATUS[status]) {
-      const s = STATUS[status];
-      host.classList.add("wp-nl-panel--" + s.kind);
-      host.append(el("p", "wp-nl-panel__title", s.title), el("p", null, s.body));
-      return;
-    }
-
-    if (action === "unsubscribe" || token) {
-      host.append(
-        el("p", "wp-nl-panel__title", "Unsubscribe"),
-        el("p", null, "Confirm below and we will stop sending you the newsletter.")
-      );
-      const btn = el("button", "wp-nl__btn", "Unsubscribe");
-      btn.type = "button";
-      const note = el("p", "wp-nl__note");
-      note.setAttribute("aria-live", "polite");
-      host.append(btn, note);
-
-      btn.addEventListener("click", async () => {
-        btn.disabled = true;
-        btn.textContent = "Working...";
-        try {
-          const res = await fetch(apiBase(host) + "/api/newsletter/unsubscribe", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({ token: token || "" }),
-          });
-          if (res.ok) {
-            btn.hidden = true;
-            note.textContent = "Done. You will not receive further emails.";
-            note.className = "wp-nl__note wp-nl__note--ok";
-          } else {
-            note.textContent = "That did not work. Write to the support address below.";
-            note.className = "wp-nl__note wp-nl__note--err";
-            btn.disabled = false;
-            btn.textContent = "Unsubscribe";
-          }
-        } catch (e) {
-          note.textContent = "Could not reach the server. Try again in a moment.";
-          note.className = "wp-nl__note wp-nl__note--err";
-          btn.disabled = false;
-          btn.textContent = "Unsubscribe";
-        }
-      });
-      return;
-    }
-
-    host.append(
-      el("p", "wp-nl-panel__title", "Nothing to confirm here"),
-      el("p", null, "Open this page from a link in one of our emails.")
-    );
-  }
+  /* The confirmation and unsubscribe pages are listmonk's, at
+     /subscription/... . Its links never route back here, so the panel
+     that used to render those outcomes has been removed along with the
+     [data-wp-newsletter-status] mount in data/newsletter.md. */
 
   function boot() {
     document.querySelectorAll("[data-wp-newsletter]").forEach(mount);
-    document.querySelectorAll("[data-wp-newsletter-status]").forEach(mountStatus);
   }
 
   /* mkdocs-material swaps the DOM on navigation when instant loading is on,

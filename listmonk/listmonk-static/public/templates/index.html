@@ -1,0 +1,44 @@
+{{ define "header" }}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ .Data.Title }} - {{ .SiteName }}</title>
+  <meta name="description" content="{{ .Data.Description }}">
+  {{ if .EnablePublicArchive }}
+  <link rel="alternate" type="application/rss+xml" title="{{ L.T "public.archiveTitle" }} - {{ .SiteName }}" href="{{ .RootURL }}/archive.xml">
+  {{ end }}
+  <link rel="stylesheet" href="/public/static/style.css?v={{ .AssetVersion }}">
+  <link rel="stylesheet" href="/public/custom.css?v={{ .AssetVersion }}">
+  <link rel="stylesheet" href="/public/static/waterpark.css?v=2">
+  <script src="/public/custom.js?v={{ .AssetVersion }}" defer></script>
+  {{ if ne .FaviconURL "" }}
+  <link rel="icon" href="{{ .FaviconURL }}">
+  {{ else }}
+  <link rel="icon" href="/public/static/favicon.png?v={{ .AssetVersion }}">
+  {{ end }}
+</head>
+<body class="wp-page">
+  <div class="wp-card">
+    <header class="wp-header">
+      <a class="wp-brand" href="{{ .RootURL }}/" aria-label="Waterpark home">
+        {{ if ne .LogoURL "" }}
+        <img src="{{ .LogoURL }}" width="60" height="60" alt="">
+        {{ end }}
+        <span>Waterpark</span>
+      </a>
+    </header>
+    <main class="wp-content" id="main-content">
+{{ end }}
+
+{{ define "footer" }}
+    </main>
+    <footer class="wp-footer">
+      <p>The Waterpark team at DKRZ</p>
+      <a href="{{ .RootURL }}/">Back to Waterpark</a>
+    </footer>
+  </div>
+</body>
+</html>
+{{ end }}

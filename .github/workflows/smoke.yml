@@ -13,13 +13,11 @@ on:
   push:
     branches: [main]
     paths:
-      - "rest-api/**"
       - "landingpage/**"
       - ".dev/**"
       - ".github/workflows/smoke.yml"
   pull_request:
     paths:
-      - "rest-api/**"
       - "landingpage/**"
       - ".dev/**"
       - ".github/workflows/smoke.yml"
@@ -44,23 +42,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
       - name: Start the stack
         # No configuration step: with dev/secrets empty the API mails the
         # local mailbox, which is exactly the shape a developer gets.
         run: $COMPOSE up --build -d
-
-      - name: Install pytest
-        run: pip install pytest
-
-      - name: Run the end-to-end checks
-        # Standard library only, so the package does not need installing.
-        env:
-          WATERPARK_STACK_URL: http://localhost:8000
-        run: pytest -v -m stack rest-api/tests/test_stack.py
 
       - name: Logs
         if: always()
