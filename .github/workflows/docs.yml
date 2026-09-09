@@ -55,11 +55,21 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Disable unused Google Chrome repository
+        shell: bash
+        run: |
+          for source in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+            [ -f "$source" ] || continue
+            if grep -q 'dl.google.com/linux/chrome' "$source"; then
+              sudo mv "$source" "${source}.disabled"
+            fi
+          done
+
       - name: Install cairo for the social plugin
         # mkdocs-material[imaging] builds the social cards with cairosvg.
         # Without these the plugin warns on every page and --strict fails.
         run: |
-          sudo apt-get update
+          sudo apt-get update  --error-on=any
           sudo apt-get install -y --no-install-recommends \
             libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev
         working-directory: .
