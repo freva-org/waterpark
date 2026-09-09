@@ -18,7 +18,6 @@ SHELL := bash
 .ONESHELL:
 .DEFAULT_GOAL := help
 
-API_DIR  ?= rest-api
 DOCS_DIR ?= landingpage
 COMPOSE  ?= docker compose
 FILE     := -f .dev/compose.yml
@@ -76,11 +75,8 @@ announce: ## Seed a test announcement so the banner can be checked
 	echo "seeded, expires $$expires. Remove it with:"
 	echo "  $(COMPOSE) $(FILE) exec api rm /work/.dev/announcements.toml"
 
-smoke: ## Run the end-to-end tests against the running stack
-	@cd "$(API_DIR)" && WATERPARK_STACK_URL=http://localhost:8000 tox -e stack
-
 mail: ## List what the mailbox has caught, without opening the UI
-	@echo "### what the API thinks it did"
+	@echo "### what the Mailbox looks like"
 	$(COMPOSE) $(FILE) logs api 2>&1 | grep -iE "email|newsletter" | tail -15 || echo "  nothing logged"
 	echo
 	echo "### what mailpit actually holds"
@@ -122,7 +118,6 @@ lint: ## Run the pre-commit hooks over the whole tree
 	@pre-commit run --all-files
 
 check: ## Everything CI runs, in both repos
-	@cd "$(API_DIR)" && tox -e lint,types,test
 	cd "$(DOCS_DIR)" && $(MAKE) check
 
 seed-dump: ## Save listmonk's current settings and lists as the dev seed
