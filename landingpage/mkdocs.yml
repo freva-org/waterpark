@@ -114,6 +114,16 @@ extra:
   api_base: !ENV [WP_API_BASE, ""]
   # DKRZ Datenschutzerklärung; fills the consent line under the signup form.
   privacy_url: ""
+  # The listmonk list the signup widget subscribes to. Not a secret: it is
+  # what public subscription forms are built from and ends up in the page
+  # source of every page carrying the form, so it belongs in the config
+  # rather than in a repository secret.
+  #
+  # The default is the production list; .dev/compose.yml exports
+  # WP_LIST_UUID for the development one. Empty until production exists,
+  # which fails closed: the widget says signup is not configured rather
+  # than posting a UUID that listmonk will reject.
+  list_uuid: !ENV [WP_LIST_UUID, ""]
   social:
     - icon: material/email
       link: mailto:waterpark@support.dkrz.de

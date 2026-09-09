@@ -89,7 +89,7 @@ repos:
         # The scripts directly under scripts/ are ours and are checked.
         args:
           - --quiet-level=2
-          - --ignore-words-list=te,nd,fo,ist,deine,parm,requirer,ORCESTRA,THIRDPARTY
+          - --ignore-words-list=optin,te,nd,fo,ist,deine,parm,requirer,ORCESTRA,THIRDPARTY
         exclude: |
           (?x)^(
             .*\.(svg|ico|lock|ipynb)|

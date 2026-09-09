@@ -23,7 +23,7 @@ DOCS_DIR ?= landingpage
 COMPOSE  ?= docker compose
 FILE     := -f .dev/compose.yml
 
-.PHONY: help dev up down logs rebuild ps shell announce check clean doctor mail smoke hooks lint
+.PHONY: help dev up down logs rebuild ps shell announce check clean nuke seed-dump doctor mail smoke hooks lint
 
 help: ## Show this help
 	@echo "Waterpark workspace"
@@ -125,7 +125,30 @@ check: ## Everything CI runs, in both repos
 	@cd "$(API_DIR)" && tox -e lint,types,test
 	cd "$(DOCS_DIR)" && $(MAKE) check
 
-clean: ## Stop the stack and delete its volumes and images
-	@$(COMPOSE) $(FILE) down --volumes --rmi local
+seed-dump: ## Save listmonk's current settings and lists as the dev seed
+	@# The whole database, so the list UUID in mkdocs.yml survives a
+	@# rebuild along with the settings.
+	$(COMPOSE) $(FILE) exec -T postgres \
+	  pg_dump --clean --if-exists --no-owner --no-privileges -U listmonk listmonk \
+	  > .dev/postgres/init/00-listmonk.sql
+	echo "wrote .dev/postgres/init/00-listmonk.sql ($$(wc -l < ./dev/postgres/init/00-listmonk.sql) lines)"
+	echo "commit it, then 'make nuke && make up' to check it restores"
+
+clean: ## Stop the stack and remove its images, KEEPING the database
+	@$(COMPOSE) $(FILE) down --rmi local
 	cd "$(DOCS_DIR)" && $(MAKE) clean
-	echo "cleaned"
+	echo "cleaned. The database volume is intact; 'make nuke' drops it."
+
+nuke: ## Delete everything including the database volume
+	@# Separate from `clean` on purpose: this discards listmonk's settings,
+	@# lists and subscribers. Without a committed seed dump the list UUID
+	@# changes and the signup form stops working until mkdocs.yml is
+	@# updated to match.
+	echo "This deletes the listmonk database, including its settings."
+	if [ ! -s dev/postgres/init/00-listmonk.sql ]; then
+	  echo "There is no seed dump, so nothing will be restored." >&2
+	  echo "Run 'make seed-dump' first if you want to keep the settings." >&2
+	fi
+	read -r -p "Type yes to continue: " reply; [ "$$reply" = "yes" ] || exit 1
+	$(COMPOSE) $(FILE) down --volumes --rmi local
+	echo "gone"

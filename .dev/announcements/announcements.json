@@ -1,0 +1,13 @@
+{
+  "announcements": [
+    {
+      "id": "s3-gateway-upgrade-2026-09-19",
+      "level": "warning",
+      "text": "The S3 endpoint will be unavailable on 19 September, 06:00 to 16:00 UTC, for a gateway upgrade.",
+      "starts": "2026-09-12T09:00:00Z",
+      "expires": "2026-09-19T16:00:00Z",
+      "link": "https://waterpark.dkrz.de/newsletter/",
+      "link_text": "Get notified"
+    }
+  ]
+}

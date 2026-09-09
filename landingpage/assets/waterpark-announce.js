@@ -1,8 +1,14 @@
 /* Waterpark announcement banner.
  *
- * Fills mkdocs-material's announce bar from GET /api/announcements at page
- * load. Nothing about the current state of the machine is baked into the
- * built site, so clearing a notice never needs a rebuild or a workflow run.
+ * Fills mkdocs-material's announce bar from /api/announcements at page
+ * load, which nginx serves straight off disk. Nothing about the current
+ * state of the machine is baked into the built site, so clearing a notice
+ * never needs a rebuild or a workflow run -- just an edit to one file.
+ *
+ * Because there is no application behind it, the window filtering happens
+ * here. That keeps the file the only thing to edit and keeps the property
+ * that mattered: an entry with a past `expires` disappears on its own,
+ * rather than sitting there until somebody remembers to remove it.
  *
  * If the API is unreachable the bar simply stays hidden. A docs site that
  * still works when the backend is down is worth more than a banner saying
@@ -20,9 +26,28 @@
 
   const apiBase = () => window.WP_API_BASE || "";
 
+  /* An entry is shown between `starts` (optional) and `expires`
+     (required). A missing or unparsable `expires` drops the entry: the
+     alternative is a banner nothing can clear, which is the failure this
+     whole arrangement exists to avoid. */
+  const isLive = (item, now) => {
+    const expires = Date.parse(item.expires);
+    if (!Number.isFinite(expires) || expires <= now) return false;
+    if (!item.starts) return true;
+    const starts = Date.parse(item.starts);
+    return Number.isFinite(starts) && starts <= now;
+  };
+
+  const live = (items) => {
+    const now = Date.now();
+    return items
+      .filter((item) => item && item.id && item.text && isLive(item, now))
+      .sort((a, b) => Date.parse(a.expires) - Date.parse(b.expires));
+  };
+
   /* Dismissals are per-announcement-id and expire with the announcement, so
-     the store cannot grow without bound and a reused id cannot resurrect
-     an old dismissal. */
+     the store cannot grow without bound and an id used again later
+     cannot resurrect an old dismissal. */
   const readDismissed = () => {
     try {
       const raw = window.localStorage.getItem(DISMISS_KEY);
@@ -120,7 +145,8 @@
       });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
-      render(host, Array.isArray(data.announcements) ? data.announcements : []);
+      const items = Array.isArray(data) ? data : data.announcements;
+      render(host, live(Array.isArray(items) ? items : []));
     } catch (e) {
       host.hidden = true;
       const banner = host.closest(".md-banner");

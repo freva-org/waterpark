@@ -1,7 +1,5 @@
 # Newsletter
 
-<div data-wp-newsletter-status></div>
-
 <div data-wp-newsletter data-variant="block"
      data-title="Sign up"
      data-sub="Enter your address and we will send you a confirmation link."
@@ -11,26 +9,34 @@ The Waterpark newsletter goes out a few times a year. It covers new datasets
 added to the hub, changes to the S3 endpoint or the storage layout, and
 anything that would break existing notebooks.
 
-## How signup works
+## How signing up works
 
-Signing up is a two-step process, so nobody can put your address on the list
-without you:
+It takes two steps, so nobody can put your address on the list without you:
 
 1. You enter your address and we email you a confirmation link.
-2. The list only records you once you click that link. Unconfirmed addresses
-   are never sent anything else.
+2. You are only added once you click that link. An address that is never
+   confirmed receives nothing further.
 
-Confirmation links stop working after 48 hours. If yours has expired, just
-sign up again.
+If the link no longer works, sign up again and we will send a fresh one.
 
 ## Leaving the list
 
-Every email we send carries an unsubscribe link that works in one click, with
-no login. You can also write to
+Every email carries an unsubscribe link that works in one click, with no
+login and no account. You can also write to
 [waterpark@support.dkrz.de](mailto:waterpark@support.dkrz.de) and we will
-remove you by hand.
+take you off by hand.
+
+If you would rather we deleted everything we hold about you instead of
+simply stopping the emails, say so and we will do that.
 
 ## What we store
 
-Your email address, the language you signed up in, and the timestamps of your
-signup and confirmation. Nothing else, and nothing is passed to third parties.
+Your email address, and the times at which you signed up and confirmed. We
+also record the network address the confirmation came from, which is what
+lets us show that consent was given if we are ever asked.
+
+Nothing is passed to third parties, and the list is never used for anything
+but this newsletter.
+
+The newsletter is managed with [listmonk](https://listmonk.app), which runs
+on DKRZ hardware. Your address does not leave DKRZ.

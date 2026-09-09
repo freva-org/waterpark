@@ -3,36 +3,22 @@
 #
 #   docker compose up          (or: podman-compose up)
 #
-#   http://localhost:8000           the site, with /api on the same origin
-#   http://localhost:8000/mailbox/  mailpit, catches every outgoing mail
+#   http://localhost:8000            the site
+#   http://localhost:8000/newsletter/    the signup form, posting to listmonk
+#   http://localhost:8000/lists/     listmonk's admin UI
+#   http://localhost:8000/mailbox/   mailpit, catches every outgoing mail
 #
-# One published port. Everything else talks over the `waterpark` bridge by
-# service name, so nothing but the proxy is reachable from the host and
-# development cannot accidentally stop being same-origin.
+# One published port, as before. The difference from the previous stack is
+# what sits behind it: listmonk and Postgres instead of a FastAPI service,
+# and the announcement banner served straight off a file.
 #
-# The point of the proxy is that dev is *same-origin*, exactly like
-# production behind nginx. No CORS, no injected WP_API_BASE, and base_url
-# in the config is one value rather than a dev-only split between the page
-# origin and the API origin.
-#
-# Source directories are mounted read-only; everything the containers write
-# goes to named volumes, so nothing here can leave root-owned files in your
-# checkout under rootless podman or rootless docker.
-#
-# Nothing to set up. With no secrets present the stack sends every mail to
-# the local mailbox, which is exactly how it runs in CI. To send through a
-# real account instead, drop files into dev/secrets/ -- that is the only
-# configuration step there is, and it is optional.
-#
-# The `z` mount flag relabels for SELinux. It is a no-op where SELinux is
-# not enforcing, so it is safe to leave on.
+# Shaped like production on purpose, even though a laptop does not need
+# it. The things that break on deployment are the seams -- the proxy paths,
+# the subscription form's field names, where the banner file lives -- and
+# those only get exercised if the layout matches.
 
 name: waterpark-dev
 
-# One user-defined bridge. Compose would create one implicitly, but naming
-# it makes the topology explicit: every service talks to every other by
-# service name over this network, and the only thing crossing to the host
-# is the proxy's port publish below.
 networks:
   waterpark:
     driver: bridge
@@ -40,89 +26,25 @@ networks:
 services:
 
   # --- single entry point --------------------------------------------------
+  # Caddy here, nginx in production. Different software, same routing table:
+  # the paths below are the contract, and rest-api/nginx.conf has to grow
+  # the same three locations.
   proxy:
     image: docker.io/library/caddy:2-alpine
     networks: [waterpark]
-    # Caddy listens on the standard :80 inside the network and only the
-    # host mapping decides where you reach it. The previous version used
-    # 8000 on both sides, which made three different 8000s in one file
-    # (host, proxy, docs) and was needlessly confusing to read.
     ports:
       - "8000:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
+      # The announcement banner. A file, not a service: editing it is the
+      # whole publishing workflow, and the site picks it up on the next
+      # page load. In production this is /var/lib/waterpark.
+      - ./announcements:/srv/announcements:ro,z
     depends_on:
-      api:
-        condition: service_healthy
       docs:
         condition: service_healthy
-    restart: unless-stopped
-
-  # --- the API -------------------------------------------------------------
-  api:
-    networks: [waterpark]
-    build:
-      context: ../rest-api
-      dockerfile: Containerfile.dev
-    volumes:
-      # Editable install points at /work/src, so this mount is the live code.
-      - ../rest-api/src:/work/src:ro,z
-      - api-state:/work/.dev
-      # Secrets as files, the interface every container runtime already
-      # speaks. A plain directory here so the stack starts whether or not
-      # anything is in it; swap it for a compose `secrets:` block or
-      # `podman secret` in CI without the application noticing, because
-      # both land in the same place.
-      - ./secrets:/run/secrets:ro,z
-    environment:
-      # No config file anywhere: the whole dev configuration is right here,
-      # and the only thing that can override it is a mounted secret.
-      #
-      # base_url and api_url: Caddy puts pages and API on one origin, so
-      # api_url stays empty and falls back to base_url, exactly as in
-      # production. cors_origins stays empty for the same reason.
-      WATERPARK_BASE_URL: http://localhost:8000
-      WATERPARK_DB_TYPE: sqlite
-      WATERPARK_DB_NAME: /work/.dev/waterpark
-      WATERPARK_LOGDIR: /work/.dev/logs
-      WATERPARK_ANNOUNCEMENTS_PATH: /work/.dev/announcements.toml
-      # The app logger defaults to ERROR, which hides every "verification
-      # sent" and "address rejected" line. 2 is INFO, 3 is DEBUG.
-      VERBOSITY: "2"
-
-      # Mail. These defaults point at the mailbox container, which accepts
-      # everything and delivers nothing, so the double opt-in flow can be
-      # exercised without mailing a real person. This is also the shape CI
-      # runs in.
-      WATERPARK_EMAIL_SERVER: mailbox
-      WATERPARK_EMAIL_PORT: "1025"
-      WATERPARK_EMAIL_DISABLED: "0"
-
-      # ... unless a secret says otherwise. Each <VAR>_FILE names a path;
-      # if the file exists and is non-empty its contents win over the
-      # variable above, and if it does not exist the variable stands. That
-      # is what makes dev/secrets/ optional. Put a file there named after
-      # the setting to override it:
-      #
-      #   dev/secrets/email_server        posteo.de
-      #   dev/secrets/email_port          587
-      #   dev/secrets/email_user          you@posteo.org
-      #   dev/secrets/email_password      an app-specific password
-      #   dev/secrets/email_from_address  you@posteo.org
-      #
-      # from_address matters: most providers reject a From they do not own.
-      WATERPARK_EMAIL_SERVER_FILE: /run/secrets/email_server
-      WATERPARK_EMAIL_PORT_FILE: /run/secrets/email_port
-      WATERPARK_EMAIL_USER_FILE: /run/secrets/email_user
-      WATERPARK_EMAIL_PASSWORD_FILE: /run/secrets/email_password
-      WATERPARK_EMAIL_FROM_ADDRESS_FILE: /run/secrets/email_from_address
-      WATERPARK_EMAIL_FROM_NAME_FILE: /run/secrets/email_from_name
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/health').read()"]
-      interval: 2s
-      timeout: 5s
-      retries: 30
-      start_period: 10s
+      listmonk:
+        condition: service_started
     restart: unless-stopped
 
   # --- the docs ------------------------------------------------------------
@@ -137,19 +59,12 @@ services:
       - ../landingpage/assets:/work/assets:ro,z
       - ../landingpage/scripts:/work/scripts:ro,z
       - ../landingpage/mkdocs.yml:/work/mkdocs.yml:ro,z
-      # mkdocs needs one flat docs_dir, assembled from the three source
-      # trees above. A volume rather than a bind mount so the symlink farm
-      # and the vendored browser builds never touch your checkout.
       - docs-build:/work/.build
       - npm-cache:/root/.npm
     environment:
-      # Without this the build scripts resolve the repo root to the parent
-      # of the checkout: they still assume the pre-flatten docs/scripts
-      # layout and compute SCRIPT_DIR.parents[1].
       GRID_DOCTOR_ROOT: /work
       WATERPARK_BASE_PATH: /
-      # Set to 1 to skip the npm vendoring of the STAC and data browsers.
-      # Much faster to start; the two pages that embed them will 404.
+      WP_LIST_UUID: "21403ce5-ad9a-439f-a132-f0ca409db1f7"
       SKIP_ASSET_BUILD: "${SKIP_ASSET_BUILD:-0}"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000').read()"]
@@ -159,14 +74,69 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  # --- the newsletter ------------------------------------------------------
+  listmonk:
+    image: docker.io/listmonk/listmonk:latest
+    networks: [waterpark]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      LISTMONK_app__address: 0.0.0.0:9000
+      # Reached through the proxy, so listmonk has to generate links under
+      # the public URL rather than under its own container name. The
+      # unsubscribe link in every message comes from this.
+      LISTMONK_app__root_url: http://localhost:8000
+      LISTMONK_db__host: postgres
+      LISTMONK_db__port: "5432"
+      LISTMONK_db__user: listmonk
+      LISTMONK_db__password: listmonk
+      LISTMONK_db__database: listmonk
+      LISTMONK_db__ssl_mode: disable
+      # Development only. In production this is a Keycloak login through
+      # listmonk's own OIDC support, with the custom flow rejecting anyone
+      # outside the admin group before a session is ever created.
+      LISTMONK_ADMIN_USER: waterpark
+      LISTMONK_ADMIN_PASSWORD: waterpark-dev-only
+    volumes:
+      - ../listmonk/listmonk-static:/listmonk/custom-static:ro,z
+    command:
+      - sh
+      - -c
+      - |
+        ./listmonk --install --idempotent --yes --config '' &&
+        ./listmonk --upgrade --yes --config '' &&
+        exec ./listmonk --config '' --static-dir=/listmonk/custom-static
+    restart: unless-stopped
+
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    networks: [waterpark]
+    environment:
+      POSTGRES_USER: listmonk
+      POSTGRES_PASSWORD: listmonk
+      POSTGRES_DB: listmonk
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Restored only when the data directory is empty, which is exactly
+      # when listmonk would otherwise come up with default settings and a
+      # freshly generated list UUID. See `make seed-dump`.
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro,z
+    healthcheck:
+      # listmonk's --install fails confusingly if it starts before the
+      # database accepts connections, so this gate is load-bearing.
+      test: ["CMD-SHELL", "pg_isready -U listmonk -d listmonk"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
   # --- outgoing mail, caught not delivered ---------------------------------
   mailbox:
     image: docker.io/axllent/mailpit:latest
     networks: [waterpark]
     environment:
-      # Served under /mailbox by the proxy, so there is exactly one port
-      # published on the host. Mailpit needs to know its own prefix or it
-      # generates absolute links back to /.
       MP_WEBROOT: /mailbox
       MP_SMTP_AUTH_ACCEPT_ANY: "1"
       MP_SMTP_AUTH_ALLOW_INSECURE: "1"
@@ -174,6 +144,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  api-state:
   docs-build:
   npm-cache:
+  postgres-data:
