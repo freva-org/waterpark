@@ -34,6 +34,11 @@ theme:
     - search.highlight
     - search.suggest
 
+# Appends a content digest to every local extra_css / extra_javascript entry, so
+# an edit to the loader or the stylesheet reaches a reader without a hard reload.
+hooks:
+  - scripts/cache_bust.py
+
 plugins:
   - search
   - social:
