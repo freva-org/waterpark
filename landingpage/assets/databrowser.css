@@ -45,6 +45,11 @@ body.waterpark-databrowser-page .md-main {
   pointer-events: auto;
 }
 
+/* The pick bar sits at the bottom of the WIDGET */
+body.waterpark-databrowser-page .freva-db .pickbar {
+  position: fixed;
+}
+
 /* 2. Mount sizing */
 .waterpark-databrowser-wrapper {
   width: 100%;
