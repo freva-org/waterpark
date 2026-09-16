@@ -16,7 +16,6 @@ pages are shared between the two sites; see [Shared pages](#shared-pages).
 | | |
 |---|---|
 | `landingpage/` | mkdocs site: content, theme overrides, build tooling |
-| `rest-api/` | FastAPI service: newsletter, announcements, config |
 | `.dev/` | development stack: compose file, proxy config, secrets |
 | `Makefile` | entry point for everything below |
 
@@ -72,7 +71,6 @@ nothing can reach the API on a second port and start needing CORS.
 | service | what it is |
 |---|---|
 | `proxy` | Caddy. `/api/*` to the API, `/mailbox/*` to mailpit, the rest to the docs |
-| `api` | uvicorn with autoreload; `rest-api/src` mounted read-only |
 | `docs` | mkdocs serve with live reload; `data`, `shared`, `assets` mounted read-only |
 | `mailbox` | mailpit |
 
@@ -81,8 +79,7 @@ named volumes, so nothing lands root-owned in your checkout.
 
 ### Live reload
 
-Editing anything under `landingpage/data`, `landingpage/shared`,
-`landingpage/assets` or `rest-api/src` reloads by itself.
+Editing anything under `landingpage/data`, `landingpage/shared`.
 
 Adding a **new** file to the docs needs one service restarted:
 
@@ -164,6 +161,33 @@ documentation and belongs in a page.
 
 Locally, `make announce` seeds a two-hour test notice.
 
+### Gallery
+
+`landingpage/examples/` holds short, complete programs that do something
+useful with the data in the hub, and `scripts/build_gallery.py` turns them
+into pages. Each script runs on its own against the public endpoint with
+nothing but `examples/requirements.txt`, which is the property to protect:
+nothing in there may depend on being inside a documentation build.
+
+Execution and rendering are deliberately separate, for the same reason the
+shared pages are vendored rather than fetched.
+
+```
+python scripts/build_gallery.py --render --out .build/data   # offline, every docs build
+make gallery            # run the examples, refresh assets/gallery/
+make gallery ONLY=03    # just one
+make gallery-check      # which figures no longer match their example
+```
+
+The figures in `landingpage/assets/gallery/` are committed. The docs build
+therefore never touches S3, a changed plot arrives as a reviewable diff, and
+a bucket being migrated shows up as a red `gallery` run rather than as a
+documentation build nobody can merge past. A page whose figure is missing
+still builds, with a notice in place of the plot.
+
+Adding an example means adding a line to the `nav:` block in `mkdocs.yml`.
+The strict build says so clearly if you forget.
+
 ### Dataset listing
 
 `landingpage/scripts/refresh_buckets.py` regenerates
@@ -173,40 +197,18 @@ hand-written descriptions. Needs `WATERPARK_S3_KEY` and
 
 ## Continuous integration
 
-Four workflows, all with `workflow_dispatch` so they can be run by hand
+Five workflows, all with `workflow_dispatch` so they can be run by hand
 from the Actions tab.
 
 | workflow | runs on | what it does |
 |---|---|---|
 | `docs` | changes under `landingpage/` | strict mkdocs build; publishes to `gh-pages` from `main` |
-| `api` | changes under `rest-api/` | `lint`, `types` and `test` as separate jobs |
 | `smoke` | changes to either, or to `dev/` | brings up the compose stack and runs the `stack`-marked tests |
 | `sync-shared` | weekly, or on demand | re-pins the shared pages and opens a pull request |
+| `gallery` | changes under `landingpage/examples/`, weekly | runs the examples against S3 and opens a pull request with the refreshed figures |
 
 `docs` takes a `deploy` input, on by default, so a manual run can build
 without republishing.
-
-The smoke job needs no extra ports: the mailbox is behind the same proxy at
-`/mailbox/`, so the tests read the confirmation email over the same `:8000`
-they use for everything else. It runs with `SKIP_ASSET_BUILD=1`, since
-nothing it checks touches the two vendored browser pages.
-
-### Tests
-
-```sh
-cd rest-api
-tox -e test          # the whole suite, in process, no containers
-tox -e stack         # end-to-end, needs `make up` first
-```
-
-`tox -e test` excludes anything marked `stack`, so the default run is fast
-and needs nothing running. The `stack` tests skip themselves unless
-`WATERPARK_STACK_URL` is set, so a bare `pytest` does the right thing
-either way.
-
-Because both `docs` and `api` use `paths:` filters, a pull request that
-touches only one of them will show the other as not run. Bear that in mind
-if you make either a required status check.
 
 ## Deployment
 

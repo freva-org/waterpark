@@ -17,6 +17,15 @@
 /landingpage/stac-browser-src/
 /landingpage/databrowser-src/
 
+# Where an example drops its figure when run directly rather than through
+# scripts/build_gallery.py, which runs it in a scratch directory and collects
+# the result into assets/gallery/.
+/landingpage/examples/*.png
+
+# NOT ignored, on purpose: landingpage/assets/gallery/ holds the figures the
+# gallery workflow produces. Committing them is what keeps the docs build
+# offline and makes a changed plot show up as a reviewable diff.
+
 # NOT ignored, on purpose: landingpage/shared/ holds the pages vendored from
 # grid-doctor by scripts/sync_shared.py. Committing them is the whole point
 # of pinning: offline builds, and upstream changes visible as a normal diff.

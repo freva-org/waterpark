@@ -1,0 +1,119 @@
+name: gallery
+
+# Runs the gallery examples against the live S3 endpoint.
+#
+# Deliberately not part of the `docs` workflow. That one builds on every
+# pull request touching landingpage/, and it must stay offline, fast and
+# reproducible: it renders figures that are already committed. This one
+# goes to the network, takes minutes rather than seconds, and can fail for
+# reasons that have nothing to do with the change under review, such as a
+# bucket being migrated.
+#
+# Splitting them means a broken dataset shows up as a red run here, with a
+# name that says what happened, instead of as a documentation build that
+# nobody can merge past.
+
+on:
+  pull_request:
+    paths:
+      - "landingpage/examples/**"
+      - "landingpage/scripts/build_gallery.py"
+      - ".github/workflows/gallery.yml"
+  schedule:
+    # Weekly, same idea as sync-shared: catch a store that was republished
+    # with different variable names before a reader does.
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Restrict to examples matching this, e.g. 03"
+        type: string
+        default: ""
+
+concurrency:
+  group: gallery-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+defaults:
+  run:
+    working-directory: landingpage
+
+jobs:
+  # Cheap, offline, and the only part that runs on a normal pull request.
+  # Tells a contributor that a figure needs refreshing without making them
+  # wait for the network to find out.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/build_gallery.py --check
+
+  run:
+    # Only where a refresh can actually go somewhere: a pull request from a
+    # fork cannot be pushed to, and there is no point spending the minutes.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: landingpage/examples/requirements.txt
+
+      - name: Install
+        run: pip install -r examples/requirements.txt pillow
+
+      - name: Cache the Natural Earth coastlines
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/cartopy
+          key: cartopy-naturalearth-110m
+
+      - name: Warm the coastline cache
+        # Cartopy fetches the shapefiles from a third-party host on first
+        # use, and defers it to draw time, where a failure surfaces inside
+        # savefig and takes the whole figure with it. Doing it here once
+        # keeps that unrelated flake out of the examples, which deliberately
+        # carry no guard for it: a map without coastlines is a bad figure
+        # and should fail rather than pass quietly.
+        run: |
+          python -c "
+          import cartopy.feature as cf
+          print(len(list(cf.NaturalEarthFeature('physical','coastline','110m').geometries())), 'coastline geometries')
+          "
+
+      - name: Run the examples
+        # --continue-on-error so one unavailable store does not hide whether
+        # the other seven still work. The step still fails at the end.
+        run: |
+          python scripts/build_gallery.py --run --continue-on-error \
+            ${{ inputs.only && format('--only {0}', inputs.only) || '' }}
+
+      - name: Open a pull request with the refreshed figures
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gallery/refresh
+          delete-branch: true
+          title: "docs: refresh the gallery figures"
+          commit-message: "docs: refresh the gallery figures"
+          add-paths: |
+            landingpage/assets/gallery/**
+            landingpage/gallery.lock
+          body: |
+            Produced by the `gallery` workflow from the examples in
+            `landingpage/examples/`.
+
+            A figure that changed means the data changed, so the diff is
+            worth a look rather than a rubber stamp. If nothing changed,
+            this pull request will not have been opened at all.
