@@ -11,7 +11,7 @@ name: sync-shared
 
 on:
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
       ref:
@@ -66,6 +66,8 @@ jobs:
               --head "$branch" \
               --title "Sync shared docs from grid-doctor" \
               --body "Automated bump of the \`landingpage/shared/\` pin in \`landingpage/shared-sources.toml\` to \`freva-org/grid-doctor@${pin:0:8}\`.
-
-          These pages are owned upstream. If something here looks wrong, fix it in grid-doctor rather than in this PR."
+              These pages are owned upstream. If something here looks wrong, fix it in grid-doctor rather than in this PR."
           fi
+
+          # Enable automerge on the PR (works whether it was just created or already exists)
+          gh pr merge "$branch" --squash --auto
