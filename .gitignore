@@ -113,4 +113,5 @@ tmp/
 
 # --- development ------------------------------------------------------------
 .dev/secrets
+.dev/announcements/announcements.json
 !.dev/secrets/.keep

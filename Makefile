@@ -67,8 +67,9 @@ announce: ## Seed a local announcement so the banner can be tested
 	@target="$${WATERPARK_ANNOUNCEMENTS_PATH:-$(CURDIR)/.dev/announcements/announcements.json}"
 	mkdir -p "$$(dirname "$$target")"
 	expires=$$(python -c "import datetime as d; print((d.datetime.now(d.timezone.utc)+d.timedelta(hours=4)).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+	id=$$(python -c "from uuid import uuid1; print(str(uuid1()))")
 	cat > "$$target" <<-EOF
-	{"announcements": [{"id": "local-test", "level": "info", "text": "Want to stay tuned? Subscribe to our newsletter!", "starts": "2020-09-02T08:00:00Z", "expires": "$$expires", "link": "/newsletter/", "link_text": "Subscribe to updates" }]}
+	{"announcements": [{"id": "$$id", "level": "info", "text": "Want to stay tuned? Subscribe to our newsletter!", "starts": "2020-09-02T08:00:00Z", "expires": "$$expires", "link": "/newsletter/", "link_text": "Subscribe to updates" }]}
 	EOF
 	echo "wrote $$target, expires $$expires"
 	echo "remove it again with: rm $$target"
