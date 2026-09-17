@@ -58,9 +58,29 @@ body.waterpark-databrowser-page #databrowser-mount {
   display: block;
   width: 100%;
   max-width: 100%;
-  height: calc(100vh - var(--md-header-height, 48px));
+  /* --wp-chrome is header + sticky tab bar, measured by waterpark-chrome.js.
+     --md-header-height alone misses the tab bar, which left the mount about
+     48px taller than its space: the document then scrolled by that much and
+     every wheel event that bottomed out inside the widget dragged it. */
+  height: calc(100dvh - var(--wp-chrome, 96px));
   min-height: 680px;
   overflow: hidden;
+  /* Material sets overscroll-behavior nowhere, so without this a scroll that
+     reaches the end of one of the widget's inner lists chains to the page. */
+  overscroll-behavior: contain;
+}
+
+/* Belt and braces: with nothing to scroll, the chain has nowhere to go even
+   if the height is a pixel or two out. Above the mount's own floor only, so
+   a short window can still reach the bottom of the app. */
+@media screen and (min-height: 680px) {
+  body.waterpark-databrowser-page {
+    overflow: hidden;
+  }
+}
+
+body.waterpark-databrowser-page .md-sidebar__scrollwrap {
+  overscroll-behavior: contain;
 }
 
 /* Accent to Waterpark dominant colour (teal `--md-primary-fg-color`). */

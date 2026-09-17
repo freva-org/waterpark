@@ -63,17 +63,16 @@ shell: ## Open a shell in a service; make shell S=docs
 rebuild: ## Rebuild images from scratch, ignoring the layer cache
 	@$(COMPOSE) $(FILE) build --no-cache
 
-announce: ## Seed a test announcement so the banner can be checked
-	@expires=$$(date -u -d '+2 hours' +%Y-%m-%dT%H:%M:%SZ)
-	$(COMPOSE) $(FILE) exec -T api sh -c "cat > /work/.dev/announcements.toml" <<-EOF
-	[[announcement]]
-	id = "local-test"
-	level = "warning"
-	text = "This is a local test announcement. It expires in two hours."
-	expires = $$expires
+announce: ## Seed a local announcement so the banner can be tested
+	@target="$${WATERPARK_ANNOUNCEMENTS_PATH:-$(CURDIR)/.dev/announcements/announcements.json}"
+	mkdir -p "$$(dirname "$$target")"
+	expires=$$(python -c "import datetime as d; print((d.datetime.now(d.timezone.utc)+d.timedelta(hours=4)).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+	cat > "$$target" <<-EOF
+	{"announcements": [{"id": "local-test", "level": "info", "text": "Want to stay tuned? Subscribe to our newsletter!", "starts": "2020-09-02T08:00:00Z", "expires": "$$expires", "link": "/newsletter/", "link_text": "Subscribe to updates" }]}
 	EOF
-	echo "seeded, expires $$expires. Remove it with:"
-	echo "  $(COMPOSE) $(FILE) exec api rm /work/.dev/announcements.toml"
+	echo "wrote $$target, expires $$expires"
+	echo "remove it again with: rm $$target"
+
 
 mail: ## List what the mailbox has caught, without opening the UI
 	@echo "### what the Mailbox looks like"

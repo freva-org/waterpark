@@ -430,7 +430,7 @@
 
       const bar = h("div", "wp__bar");
       const search = h("div", "wp__search", SVG.search);
-      const input = h("input"); input.type = "search"; input.placeholder = "Filter datasets and paths…"; input.setAttribute("aria-label", "Filter"); search.appendChild(input);
+      const input = h("input"); input.type = "search"; input.placeholder = "Look for datasets and paths…"; input.setAttribute("aria-label", "Filter"); search.appendChild(input);
       const expand = h("button", "wp__btn"); expand.type = "button"; expand.textContent = "Expand all";
       if (ctx.lazy) expand.classList.add("wp__hidden");  // no bulk expand when children load on demand
       const collapse = h("button", "wp__btn"); collapse.type = "button"; collapse.textContent = "Collapse";

@@ -69,20 +69,6 @@ examples: ## Run the examples examples and refresh their figures
 examples-check: ## Report examples figures that no longer match their example
 	@tox -e examples-check
 
-announce: ## Seed a local announcement so the banner can be tested
-	@target="$${WATERPARK_ANNOUNCEMENTS_PATH:-$(CURDIR)/../rest-api/.dev/announcements.toml}"
-	mkdir -p "$$(dirname "$$target")"
-	expires=$$(python -c "import datetime as d; print((d.datetime.now(d.timezone.utc)+d.timedelta(hours=2)).strftime('%Y-%m-%dT%H:%M:%SZ'))")
-	cat > "$$target" <<-EOF
-	[[announcement]]
-	id = "local-test"
-	level = "warning"
-	text = "This is a local test announcement. It expires in two hours."
-	expires = $$expires
-	EOF
-	echo "wrote $$target, expires $$expires"
-	echo "remove it again with: rm $$target"
-
 clean: ## Remove build output and local state
 	@rm -rf .build site site-data "$(STATE_DIR)"
 	echo "cleaned"

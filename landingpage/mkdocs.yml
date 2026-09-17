@@ -1,8 +1,18 @@
+site_name: Waterpark
+site_description: The HEALPix Data Hub on s3
+site_url: https://waterpark.dkrz.de
+site_dir: site
+docs_dir: .build/data
+
+# Dropdown links below use the corresponding directory-style URLs.
+use_directory_urls: true
+
 theme:
   name: material
   custom_dir: data/overrides
   logo: assets/logo-512.png
   favicon: assets/favicon.ico
+
   icon:
     admonition:
       example: material/database
@@ -17,6 +27,7 @@ theme:
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
+
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: teal
@@ -24,26 +35,83 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+
   features:
     - content.code.copy
-    - navigation.tabs
-    - navigation.tabs.sticky
-    - navigation.sections
     - navigation.footer
-    - toc.integrate
     - search.highlight
     - search.suggest
 
-# Appends a content digest to every local extra_css / extra_javascript entry, so
-# an edit to the loader or the stylesheet reaches a reader without a hard reload.
+# Appends a content digest to every local extra_css / extra_javascript
+# entry so asset changes reach readers without a hard reload.
 hooks:
   - scripts/cache_bust.py
 
 plugins:
+
+  # Header menus are configured separately from MkDocs navigation.
+  # Keep these URLs aligned with the pages listed under nav.
+  #
+  # Root-relative URLs assume the site is served at /, as configured
+  # by site_url above.
+  - header-dropdown:
+      dropdowns:
+        - title: Find data
+          links:
+            - text: Data Browser
+              url: /databrowser/
+            - text: STAC Browser
+              url: /stac-browser/
+
+        - title: Examples
+          links:
+            - text: Start here
+              url: /examples/
+            - text: A map of one month
+              url: /examples/01_first_map/
+            - text: The global mean is just a mean
+              url: /examples/02_global_mean/
+            - text: Cutting out a region
+              url: /examples/03_region_bbox/
+            - text: Zonal means come for free
+              url: /examples/04_zonal_mean/
+            - text: Meridional means, and why they are harder
+              url: /examples/05_meridional_mean/
+            - text: A Hovmöller diagram
+              url: /examples/06_hovmoeller/
+            - text: Moving up and down the pyramid
+              url: /examples/07_pyramid_levels/
+            - text: Comparing two datasets without regridding
+              url: /examples/08_cross_dataset/
+
+        - title: Tips and tricks
+          links:
+            - text: High resolution data
+              url: /high-level-access/
+
+        - title: Concepts
+          links:
+            - text: HEALPix in Zarr on S3
+              url: /storage_concepts/
+            - text: Why HEALPix?
+              url: /storage_concepts/why-healpix/
+            - text: Why Zarr and S3?
+              url: /storage_concepts/zarr-and-s3/
+            - text: Remapping decisions
+              url: /technical-decisions/
+            - text: Remapping benchmark
+              url: /appendix-remapping-benchmark/
+
+        - title: Operation
+          links:
+            - text: Operator Tools
+              url: /tools/
+
   - search
   - social:
       cards_layout_options:
         background_image: assets/modis-aqua.png
+
   - mkdocstrings:
       handlers:
         python:
@@ -63,25 +131,32 @@ markdown_extensions:
   - footnotes
   - pymdownx.details
   - md_in_html
+
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+
   - pymdownx.highlight:
       anchor_linenums: true
+
   - pymdownx.tasklist:
-      custom_checkbox: true  # clickable checkboxes in roadmap
+      custom_checkbox: true
+
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
   - pymdownx.arithmatex:
       generic: true
+
   - tables
   - attr_list
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.blocks.caption
+
   - toc:
       permalink: true
 
@@ -91,14 +166,18 @@ extra_css:
   - assets/stac-browser.css
   - assets/databrowser.css
   - assets/waterpark-newsletter.css
+  - assets/waterpark-focus.css
 
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  - assets/waterpark-chrome.js
   - assets/stac-browser-loader.js
   - assets/databrowser-loader.js
   - assets/waterpark-tree.js
   - assets/waterpark-inspector.js
   - assets/waterpark-newsletter.js
+  - assets/waterpark-focus.js
+  - assets/header-navigation.js
 
 site_name: Waterpark
 site_description: The HEALPix Data Hub on s3
@@ -106,45 +185,40 @@ site_url: https://waterpark.dkrz.de
 site_dir: site
 docs_dir: .build/data
 
+
 copyright: >
   Need support? <a href="mailto:waterpark@support.dkrz.de">waterpark@support.dkrz.de</a>
   &nbsp;&middot;&nbsp;
   <a href="/newsletter/">Subscribe to the newsletter</a>
 
 extra:
-  # Empty in production: nginx serves the site and the API on one origin,
-  # so the widgets use a relative path. `make dev` sets WP_API_BASE.
+  # Empty in production: nginx serves the site and API on one origin.
+  # make dev sets WP_API_BASE.
   api_base: !ENV [WP_API_BASE, ""]
-  # DKRZ Datenschutzerklärung; fills the consent line under the signup form.
+
+  # DKRZ Datenschutzerklärung for the signup consent line.
   privacy_url: ""
-  # The listmonk list the signup widget subscribes to. Not a secret: it is
-  # what public subscription forms are built from and ends up in the page
-  # source of every page carrying the form, so it belongs in the config
-  # rather than in a repository secret.
-  #
-  # The default is the production list; .dev/compose.yml exports
-  # WP_LIST_UUID for the development one. Empty until production exists,
-  # which fails closed: the widget says signup is not configured rather
-  # than posting a UUID that listmonk will reject.
+
+  # Public listmonk list UUID, included in the generated page source.
+  # .dev/compose.yml exports WP_LIST_UUID for the development list.
+  # An empty value leaves signup unconfigured.
   list_uuid: !ENV [WP_LIST_UUID, ""]
+
   social:
     - icon: material/email
       link: mailto:waterpark@support.dkrz.de
       name: Support - waterpark@support.dkrz.de
 
+# Retained for sidebar/mobile navigation and previous/next ordering.
 nav:
   - Overview: index.md
+
   - Find data:
-      # First entry on purpose: the tab links here, and both browser pages
-      # set `hide: navigation` in their front matter, so without a landing
-      # page there is nothing listing the other one once you are on either.
       - Data Browser: databrowser.md
       - STAC Browser: stac-browser.md
+
   - Examples:
       # Generated by scripts/build_examples.py into .build/data/examples/.
-      # Listed one by one rather than globbed so the pages get previous/next
-      # arrows in the order the examples are meant to be read; --strict says
-      # so loudly if a new example is not added here.
       - Start here: examples/index.md
       - A map of one month: examples/01_first_map.md
       - The global mean is just a mean: examples/02_global_mean.md
@@ -154,8 +228,10 @@ nav:
       - A Hovmöller diagram: examples/06_hovmoeller.md
       - Moving up and down the pyramid: examples/07_pyramid_levels.md
       - Comparing two datasets without regridding: examples/08_cross_dataset.md
+
   - Tips and tricks:
       - High resolution data: high-level-access.md
+
   - Concepts:
       - HEALPix in Zarr on S3: storage_concepts/index.md
       - Why HEALPix?: storage_concepts/why-healpix.md
@@ -163,12 +239,13 @@ nav:
       - Remapping decisions: technical-decisions.md
       - Remapping benchmark: appendix-remapping-benchmark.md
 
-# The override template lives inside the tree that gets copied to
-# .build/data, so it must stay excluded or the raw Jinja ships as a page.
+  - Operation:
+      - Operator Tools: tools.md
+
+# Avoid publishing raw Jinja templates copied into .build/data.
 exclude_docs: |
   overrides/**
 
-# Reachable, and linked from the footer, but deliberately not a nav tab.
-# Without this, --strict fails the build on a page that is not in the nav.
+# Linked from the footer, intentionally omitted from navigation.
 not_in_nav: |
   newsletter.md

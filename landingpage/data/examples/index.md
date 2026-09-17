@@ -1,4 +1,4 @@
-# Gallery
+# Example gallery
 
 Below you can find short, complete examples that do something useful with the
 data in the hub. Browse through them an select the example you are interested in.

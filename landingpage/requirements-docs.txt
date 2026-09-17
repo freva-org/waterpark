@@ -7,10 +7,11 @@
 # libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev libz-dev`
 # on the CI runner, or drop the `social` plugin if the cards are not worth it.
 
-mkdocs~=1.6
-mkdocs-material[imaging]~=9.5
-mkdocstrings[python]~=0.27
-pymdown-extensions~=10.11
+mkdocs
+mkdocs-material[imaging]
+mkdocstrings[python]
+pymdown-extensions
+mkdocs-header-dropdown
 
 # scripts/refresh_buckets.py
-s3fs~=2024.10
+s3fs

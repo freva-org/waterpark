@@ -38,5 +38,4 @@ lets us show that consent was given if we are ever asked.
 Nothing is passed to third parties, and the list is never used for anything
 but this newsletter.
 
-The newsletter is managed with [listmonk](https://listmonk.app), which runs
-on DKRZ hardware. Your address does not leave DKRZ.
+The newsletter service runs on DKRZ hardware. Your address does not leave DKRZ.
