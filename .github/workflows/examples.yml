@@ -1,6 +1,6 @@
-name: gallery
+name: examples
 
-# Runs the gallery examples against the live S3 endpoint.
+# Runs the examples examples against the live S3 endpoint.
 #
 # Deliberately not part of the `docs` workflow. That one builds on every
 # pull request touching landingpage/, and it must stay offline, fast and
@@ -17,8 +17,8 @@ on:
   pull_request:
     paths:
       - "landingpage/examples/**"
-      - "landingpage/scripts/build_gallery.py"
-      - ".github/workflows/gallery.yml"
+      - "landingpage/scripts/build_examples.py"
+      - ".github/workflows/examples.yml"
   schedule:
     # Weekly, same idea as sync-shared: catch a store that was republished
     # with different variable names before a reader does.
@@ -31,7 +31,7 @@ on:
         default: ""
 
 concurrency:
-  group: gallery-${{ github.ref }}
+  group: examples-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python scripts/build_gallery.py --check
+      - run: python scripts/build_examples.py --check
 
   run:
     # Only where a refresh can actually go somewhere: a pull request from a
@@ -96,22 +96,22 @@ jobs:
         # --continue-on-error so one unavailable store does not hide whether
         # the other seven still work. The step still fails at the end.
         run: |
-          python scripts/build_gallery.py --run --continue-on-error \
+          python scripts/build_examples.py --run --continue-on-error \
             ${{ inputs.only && format('--only {0}', inputs.only) || '' }}
 
       - name: Open a pull request with the refreshed figures
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: gallery/refresh
+          branch: examples/refresh
           delete-branch: true
-          title: "docs: refresh the gallery figures"
-          commit-message: "docs: refresh the gallery figures"
+          title: "docs: refresh the examples figures"
+          commit-message: "docs: refresh the examples figures"
           add-paths: |
-            landingpage/assets/gallery/**
-            landingpage/gallery.lock
+            landingpage/assets/examples/**
+            landingpage/examples.lock
           body: |
-            Produced by the `gallery` workflow from the examples in
+            Produced by the `examples` workflow from the examples in
             `landingpage/examples/`.
 
             A figure that changed means the data changed, so the diff is
