@@ -1,5 +1,5 @@
 """
-Every store, variable name and time window the gallery touches.
+Every store, variable name and time window the exmamples touch.
 
 This file exists so that a renamed variable or a re-published store is one
 edit rather than eight. If an example fails with a ``KeyError`` on a

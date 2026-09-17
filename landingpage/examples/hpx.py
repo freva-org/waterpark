@@ -1,7 +1,7 @@
 """
-Small HEALPix helpers shared by the gallery examples.
+Small HEALPix helpers shared by the examples.
 
-Every function here is short on purpose. The point of the gallery is that
+Every function here is short on purpose. The point of the examples is that
 working with HEALPix needs no framework, only a handful of facts about the
 grid, and this module is those facts written down once so the examples can
 stay about the science.
@@ -18,7 +18,7 @@ from typing import Tuple
 
 import matplotlib
 
-matplotlib.use("Agg")  # the gallery renders headless, in CI and locally
+matplotlib.use("Agg")  # the examples render headless, in CI and locally
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,8 +27,8 @@ from healpix_geo import nested
 
 S3_ENDPOINT = os.environ.get("WATERPARK_S3_ENDPOINT", "https://s3.waterpark.dkrz.de")
 
-#: Where a script's figure ends up. ``build_gallery.py`` overrides this.
-FIGURE_DIR = Path(os.environ.get("WATERPARK_GALLERY_FIGURES", "figures"))
+#: Where a script's figure ends up. ``build_exmaples.py`` overrides this.
+FIGURE_DIR = Path(os.environ.get("WATERPARK_EXAMPLES_FIGURES", "figures"))
 
 
 def open_hub(url: str, **kwargs) -> xr.Dataset:
@@ -37,7 +37,7 @@ def open_hub(url: str, **kwargs) -> xr.Dataset:
     ``chunks=None`` is the default on purpose. It gives plain lazy
     Zarr-backed arrays that slice in the size of the selection, rather than
     dask arrays whose chunk grid is built eagerly from the *global* shape.
-    At the pyramid levels used in this gallery either would work; at level
+    At the pyramid levels used in the examples either would work; at level
     16 only this one does, so it is the habit worth having.
     """
     kwargs.setdefault("chunks", None)
@@ -162,7 +162,7 @@ def coastlines(ax) -> None:
     """Draw coastlines, and carry on without them if they cannot be fetched.
 
     Cartopy downloads the Natural Earth shapefiles on first use and caches
-    them. That download is the single flakiest thing in this gallery: it is
+    them. That download is the single flakiest thing in this examples: it is
     a third-party host, it is unrelated to the data being plotted, and a
     rate limit there should not turn into a failed documentation build.
     """
@@ -187,7 +187,7 @@ def basemap(
 ):
     """A map axis with coastlines, or a bare one if cartopy is missing.
 
-    Cartopy is the only heavy dependency in the gallery and the only one
+    Cartopy is the only heavy dependency in the examples and the only one
     that is not strictly needed: without it every map still renders, just
     without coastlines. Keeping that path alive means a contributor can run
     an example without a conda environment.

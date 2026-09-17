@@ -19,7 +19,7 @@ SHELL := bash
 STATE_DIR ?= $(CURDIR)/.dev
 
 .PHONY: help serve docs deploy check shared shared-update buckets \
-        buckets-check gallery gallery-check announce clean
+        buckets-check examples examples-check announce clean
 
 help: ## Show this help
 	@echo "Waterpark landing page (docs)"
@@ -41,9 +41,9 @@ docs: ## Build the site into ./site
 deploy: ## Publish ./site to gh-pages (normally CI does this)
 	@WP_API_BASE= tox -e docs-deploy
 
-check: ## Everything CI runs: shared pin, gallery freshness, strict build
+check: ## Everything CI runs: shared pin, examples freshness, strict build
 	@tox -e shared-check
-	tox -e gallery-check
+	tox -e examples-check
 	WP_API_BASE= tox -e docs
 
 # --- content maintenance ---------------------------------------------------
@@ -62,12 +62,12 @@ buckets-check: ## Report whether the dataset listing is stale
 
 # The examples go to the network; the docs build does not. Refreshing the
 # figures is therefore its own step, run when an example changes rather than
-# on every build. `make gallery ONLY=03` does a single one.
-gallery: ## Run the gallery examples and refresh their figures
-	@tox -e gallery -- $(if $(ONLY),--only $(ONLY),)
+# on every build. `make examples ONLY=03` does a single one.
+examples: ## Run the examples examples and refresh their figures
+	@tox -e examples -- $(if $(ONLY),--only $(ONLY),)
 
-gallery-check: ## Report gallery figures that no longer match their example
-	@tox -e gallery-check
+examples-check: ## Report examples figures that no longer match their example
+	@tox -e examples-check
 
 announce: ## Seed a local announcement so the banner can be tested
 	@target="$${WATERPARK_ANNOUNCEMENTS_PATH:-$(CURDIR)/../rest-api/.dev/announcements.toml}"

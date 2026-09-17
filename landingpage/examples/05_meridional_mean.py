@@ -8,7 +8,7 @@ works too, and that averaging along a meridian is equally free.
 It is not, and the reason is worth a page: HEALPix has rows but no columns.
 Each ring is rotated relative to the one below it, and rings hold different
 numbers of cells, so no set of cells lines up along a meridian. A meridional
-mean has to be binned, which makes it the first operation in this gallery
+mean has to be binned, which makes it the first operation in the examples
 that involves a choice you have to defend.
 """
 
@@ -76,10 +76,12 @@ values = field.values[band]
 def meridional_mean(nbins):
     edges = np.linspace(-180, 180, nbins + 1)
     index = np.digitize(longitude[band], edges) - 1
-    means = np.array([
-        values[index == b].mean() if np.any(index == b) else np.nan
-        for b in range(nbins)
-    ])
+    means = np.array(
+        [
+            values[index == b].mean() if np.any(index == b) else np.nan
+            for b in range(nbins)
+        ]
+    )
     counts = np.bincount(index[index >= 0], minlength=nbins)
     return 0.5 * (edges[:-1] + edges[1:]), means, counts
 
@@ -96,8 +98,14 @@ print(f"96 bins: {fine[2].min()}-{fine[2].max()} cells per bin")
 # %%
 fig, (ax_grid, ax_mean) = plt.subplots(2, 1, figsize=(9.5, 8))
 
-ax_grid.scatter(longitude[window], latitude[window], c=rings[window],
-                cmap="twilight", s=30, edgecolor="none")
+ax_grid.scatter(
+    longitude[window],
+    latitude[window],
+    c=rings[window],
+    cmap="twilight",
+    s=30,
+    edgecolor="none",
+)
 for ring in np.unique(rings[window]):
     ax_grid.axhline(latitude[rings == ring][0], color="0.88", lw=0.6, zorder=0)
 ax_grid.set_title(f"Cell centres at level {level}: rings line up, meridians do not")
