@@ -167,6 +167,7 @@ extra_css:
   - assets/databrowser.css
   - assets/waterpark-newsletter.css
   - assets/waterpark-focus.css
+  - assets/waterpark-announce.css
 
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
@@ -178,6 +179,7 @@ extra_javascript:
   - assets/waterpark-newsletter.js
   - assets/waterpark-focus.js
   - assets/header-navigation.js
+  - assets/waterpark-announce.js
 
 site_name: Waterpark
 site_description: The HEALPix Data Hub on s3

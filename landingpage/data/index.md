@@ -66,7 +66,7 @@ coarse monthly store, then change two numbers in the URL.
     Eight short programs, one plot each, from a first map to a cross-dataset
     comparison.
 
-    [:octicons-arrow-right-16: Examples](gallery/index.md)
+    [:octicons-arrow-right-16: Examples](examples/index.md)
 
 -   :material-rocket-launch-outline:{ .lg .middle } __Read the guide__
 

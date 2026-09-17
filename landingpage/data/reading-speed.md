@@ -49,7 +49,7 @@ far more data than a question needs is reaching for the finest pyramid level
 and the highest frequency out of habit.
 
 Matching both to the question is the single biggest lever anyone has over how
-long an analysis takes, and the [examples](gallery/index.md) work through it
+long an analysis takes, and the [examples](examples/index.md) work through it
 with real numbers. A zonal mean does not need level 9, and a figure with five
 hundred pixels along its time axis does not need hourly data.
 
