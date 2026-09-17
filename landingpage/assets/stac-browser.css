@@ -31,7 +31,12 @@
    display: block;
    width: 100%;
    max-width: 100%;
-   min-height: calc(100vh - var(--md-header-height, 48px));
+   /* header + sticky tab bar, measured by waterpark-chrome.js; the old
+      --md-header-height missed the tab bar and left a permanent ~48px of
+      scroll even on the landing view. No page-level scroll lock here: unlike
+      the data browser this app grows past the viewport and teleports its
+      overlays into the mount, so the document is supposed to scroll. */
+   min-height: calc(100dvh - var(--wp-chrome, 96px));
    /* IMPORTANT: It must stay visible; STAC teleports its overlays into #stac-browser. */
    overflow: visible;
  }

@@ -1,4 +1,4 @@
-# Appendix: Remapping methodology and benchmark
+# Remapping methodology and benchmark
 
 This page collects the more technical details behind the Waterpark conversion
 pipeline. It is intended as background material for people who want to understand
