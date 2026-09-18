@@ -15,8 +15,8 @@
   var CLASS = "wp-focus";
 
   var LABEL = {
-    on: "Show navigation",
-    off: "Hide navigation",
+    on: "Show content",
+    off: "Hide contetn",
   };
 
   function stored() {
