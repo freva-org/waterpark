@@ -1,0 +1,176 @@
+# ============================================================================
+# CMIP6
+# s3://cmip6/healpix/cmip6/<experiment>/<model>/<time_frequency>/level_*.zarr
+# example: s3://cmip6/healpix/cmip6/historical-r10i1p1f2/cnrm-cm6-1/P1M/level_0.zarr/
+# ============================================================================
+[waterpark-cmip6]
+fs_type = "s3"
+root_path = "s3://cmip6/healpix/cmip6/"
+drs_format = "waterpark-cmip6"
+glob_pattern = "level_[0-9].zarr|level_[0-9][0-9].zarr"
+
+[waterpark-cmip6.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+
+[waterpark-cmip6.defaults]
+project = "waterpark"
+product = "cmip6"
+bbox = [-180.0, 180.0, -90.0, 90.0]
+stac_collection_title = "product|CMIP6 (HEALPix, WarmWorld/Waterpark)"
+stac_collection_description = "product|Coupled Model Intercomparison Project Phase 6 output, remapped to a HEALPix grid and served as Zarr for the Waterpark data pool. These merged stores include atmospheric fields and sea-surface temperature from historical and future scenario simulations."
+stac_collection_documentation_url = "product|https://wcrp-cmip.org/cmip6/"
+stac_collection_keywords = "product|HEALPix"
+stac_collection_thumbnail_url = "product|https://www.carbonbrief.org/wp-content/uploads/2019/11/cmip6_mips.jpg"
+stac_collection_thumbnail_type = "product|image/jpeg"
+
+[drs_settings.dialect.waterpark-cmip6]
+sources = ["path", "data"]
+
+[drs_settings.dialect.waterpark-cmip6.path_specs]
+dir_parts = []
+file_parts = ["_", "level_type"]
+
+[drs_settings.dialect.waterpark-cmip6.data_specs]
+[drs_settings.dialect.waterpark-cmip6.data_specs.read_kws]
+decode_times = true
+decode_coords = true
+create_default_indexes = false
+# Reduce Dask task-graph overhead
+chunks = -1
+# TODO: these coords/dims, could be moved to coordinations instead of variables
+drop_variables = [
+    "time_bounds", "time_bnds",
+    "bounds_lat", "bounds_lon", "lat_bnds", "lon_bnds",
+    "lat_bounds", "lon_bounds", "lat_vertices", "lon_vertices",
+    "bounds_nav_lat", "bounds_nav_lon",
+    "vertices_latitude", "vertices_longitude", "x_bnds", "y_bnds",
+    "latitude", "longitude", "lat", "lon", "cell", "crs", "height",
+    "area", "areacella", "areacello",
+]
+
+[drs_settings.dialect.waterpark-cmip6.data_specs.globals]
+institute_raw = "institution_id"
+institute_description_raw = "institution"
+experiment = "experiment_id"
+model = "source_id"
+ensemble = "variant_label"
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+
+[drs_settings.dialect.waterpark-cmip6.data_specs.var_attrs.cmip6_variables_raw]
+var = "*"
+attr = "short_name"
+default = "__name__"
+
+[drs_settings.dialect.waterpark-cmip6.data_specs.stats.time]
+stat = "range"
+coords = "time"
+
+[drs_settings.dialect.waterpark-cmip6.special.experiment]
+type = "call"
+call = '''
+{{ file | tojson }}.rstrip("/").rsplit("/", 4)[-4].rsplit("-", 1)[0]
+'''
+
+[drs_settings.dialect.waterpark-cmip6.special.ensemble]
+type = "call"
+call = '''
+{{ file | tojson }}.rstrip("/").rsplit("/", 4)[-4].rsplit("-", 1)[-1]
+'''
+
+[drs_settings.dialect.waterpark-cmip6.special.model]
+type = "call"
+call = '''
+{{ file | tojson }}.rstrip("/").rsplit("/", 3)[-3]
+'''
+
+[drs_settings.dialect.waterpark-cmip6.special.time_frequency]
+type = "call"
+call = '''
+(lambda value: {
+    "PT15M": "15min", "PT30M": "30min",
+    "PT1H": "1hr", "PT3H": "3hr", "PT6H": "6hr",
+    "P1D": "day", "P1M": "mon", "P1Y": "yr", "FX": "fx",
+}.get(value.upper(), value.lower()))(
+    {{ file | tojson }}.rstrip("/").rsplit("/", 2)[-2]
+)
+'''
+
+[drs_settings.dialect.waterpark-cmip6.special.variable]
+type = "call"
+call = '''
+(lambda names: [name for name in ([names] if isinstance(names, str) else names)
+    if name.casefold() not in {
+        "bounds_lat", "bounds_lon", "lat_bnds", "lon_bnds",
+        "lat_bounds", "lon_bounds", "lat_vertices", "lon_vertices",
+        "bounds_nav_lat", "bounds_nav_lon",
+        "vertices_latitude", "vertices_longitude", "x_bnds", "y_bnds",
+        "time_bounds", "time_bnds", "latitude", "longitude", "lat", "lon",
+        "time", "cell", "crs", "height", "area", "areacella", "areacello",
+    }])({{ cmip6_variables_raw | default([], true) | tojson }})
+'''
+
+[drs_settings.dialect.waterpark-cmip6.special.realm]
+type = "call"
+call = '''
+(lambda names: sorted({
+    {"pr": "atmosphere", "tas": "atmosphere", "uas": "atmosphere", "tos": "ocean"}[name]
+    for name in ([names] if isinstance(names, str) else names)
+    if name in {"pr", "tas", "uas", "tos"}
+}))({{ cmip6_variables_raw | default([], true) | tojson }})
+'''
+
+[drs_settings.dialect.waterpark-cmip6.special.cmor_table]
+type = "call"
+call = '''
+(lambda names, frequency: sorted({
+    {"pr": "Amon", "tas": "Amon", "uas": "Amon", "tos": "Omon"}[name]
+    for name in ([names] if isinstance(names, str) else names)
+    if name in {"pr", "tas", "uas", "tos"}
+}) if frequency.upper() == "P1M" else None)(
+    {{ cmip6_variables_raw | default([], true) | tojson }},
+    {{ file | tojson }}.rstrip("/").rsplit("/", 2)[-2]
+)
+'''
+
+[drs_settings.dialect.waterpark-cmip6.special.institute]
+type = "call"
+call = '''
+(lambda value, re: next(
+    (abbr for pattern, abbr in [
+        (r"^cnrm.*cerfacs",                          "cnrm-cerfacs"),
+        (r"^met office hadley",                      "mohc"),
+        (r"^max planck institute for meteorology",   "mpi-m"),
+        (r"^fondazione centro euro",                 "cmcc"),
+        (r"^jamstec.*(aori|university of tokyo).*nies","miroc"),
+        (r"^institute for numerical mathematics",    "inm"),
+        (r"^deutsches klimarechenzentrum",            "dkrz"),
+        (r"^alfred wegener institute",               "awi"),
+        (r"^beijing climate center",                 "bcc"),
+        (r"^aemet.*bsc.*cnr-isac",                   "ec-earth-consortium"),
+        (r"^canadian centre for climate",            "cccma"),
+        (r"^chinese academy of meteorological",      "cams"),
+        (r"^national institute of meteorological sciences.*korea",
+                                                      "nims-kma"),
+        (r"^csiro.*arccss",                          "csiro-arccss"),
+        (r"^csiro.*cosima",                          "csiro-cosima"),
+        (r"^(csiro\b|commonwealth scientific)",      "csiro"),
+        (r"^nanjing university of information",      "nuist"),
+        (r"^goddard institute for space studies",    "nasa-giss"),
+        (r"^noresm climate",                         "ncc"),
+        (r"^centre for climate change research.*(indian|iitm)",
+                                                      "cccr-iitm"),
+        (r"^institut pierre simon laplace",          "ipsl"),
+        (r"^chinese academy of sciences",            "cas"),
+        (r"^eth zurich.*max planck",                 "hammoz-consortium"),
+        (r"^meteorological research institute",      "mri"),
+    ] if re.search(pattern, value)),
+    value
+))(
+    " ".join(
+        {{ institute_raw | default(institute_description_raw, true) | default("", true) | tojson }}.split()
+    ).casefold(),
+    __import__("re")
+)
+'''

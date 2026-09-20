@@ -1,0 +1,916 @@
+#!/usr/bin/env bash
+# Waterpark catalogue: take the snapshot CI publishes and deliver it to Solr.
+#
+#   waterpark-catalogue pull     hourly: refresh the snapshot, then reconcile
+#   waterpark-catalogue index    reconcile, ignoring what Solr is believed to hold
+#   waterpark-catalogue check    does Solr still hold what we delivered?
+#   waterpark-catalogue report   what state.json says
+#
+
+set -euo pipefail
+
+
+HOME_DIR=${CATALOGUE_HOME:-/opt/waterpark}
+CONFIG=${CATALOGUE_CONFIG:-$HOME_DIR/catalogue.conf}
+STATE_DIR=${CATALOGUE_STATE:-$HOME_DIR/lib}
+STATE=$STATE_DIR/state.json
+DUMPS=$STATE_DIR/dumps
+API=https://api.github.com
+TOKEN=""
+CORES=(files latest)
+STATE_VERSION=2
+
+# helpers
+
+die() { printf 'ABORT   %s\n' "$*" >&2; exit 3; }
+warn() { printf 'WARNING %s\n' "$*" >&2; }
+fail() { printf 'FAILED  %s\n' "$*" >&2; }
+now() { date -u +%Y-%m-%dT%H:%M:%S+00:00; }
+
+
+age_hours() {
+  local stamp=${1:-} then
+  [ -n "$stamp" ] || return 1
+  then=$(date -u -d "$stamp" +%s 2>/dev/null) || return 1
+  echo $(( ( $(date -u +%s) - then ) / 3600 ))
+}
+
+jq_state() { jq "$@" "$STATE"; }
+
+state_apply() {
+  local tmp=$STATE_DIR/.state.$$.json
+  if ! jq "$@" "$STATE" > "$tmp" ||
+     ! jq -e '(.version | type == "number") and (.datasets | type == "object")' \
+          "$tmp" >/dev/null 2>&1; then
+    rm -f "$tmp"
+    fail "refusing to write a state I cannot re-read; the old one is kept"
+    return 1
+  fi
+  mv -f "$tmp" "$STATE"
+}
+
+load_state() {
+  mkdir -p "$STATE_DIR"
+  if [ ! -e "$STATE" ]; then
+    printf '{"version":%s,"datasets":{},"repairs":[]}\n' "$STATE_VERSION" > "$STATE"
+    return
+  fi
+  jq -e . "$STATE" >/dev/null 2>&1 ||
+    die "$STATE exists but is not readable JSON; refusing to start from scratch"
+  local version
+  version=$(jq -r '.version // 0' "$STATE")
+  [ "$version" = "$STATE_VERSION" ] ||
+    die "$STATE is format $version, this is format $STATE_VERSION. Move it aside \
+- keep it, it holds the deletion history - and the next snapshot re-delivers \
+every dataset from scratch."
+}
+
+# A digest names a directory, so it must not be able to name anything else
+valid_digest() { [[ ${1:-} =~ ^[0-9a-f]{64}$ ]]; }
+valid_name() { [[ ${1:-} =~ ^waterpark-[a-z0-9-]{1,40}$ ]]; }
+
+# Everywhere a dataset has to arrive
+destinations() { echo "$SERVERS ${DATABASE:+postgres}"; }
+
+# solr
+
+solr_base() { case $1 in http*) echo "$1" ;; *) echo "http://$1" ;; esac; }
+
+solr_alive() {
+  local server=$1 core
+  curl -fsS --max-time 10 "$(solr_base "$server")/solr/admin/info/system" \
+    -o /dev/null 2>/dev/null || return 1
+  for core in "${CORES[@]}"; do
+    [ -n "$(count_docs "$server" "$core" '*')" ] || return 1
+  done
+}
+
+count_docs() {
+  local server=$1 core=$2 dataset=$3 body
+  body=$(curl -fsS --max-time 15 -G "$(solr_base "$server")/solr/$core/select" \
+           --data-urlencode "$([ "$dataset" = '*' ] && echo 'q=*:*' || echo "q=$DATASET_FIELD:$dataset")" \
+           --data-urlencode 'rows=0' --data-urlencode 'wt=json' 2>/dev/null) || return 0
+  jq -r '.response.numFound | numbers' <<<"$body" 2>/dev/null
+}
+
+
+delete_documents() {
+  local server=$1 core=$2 url body sent=0 ids=()
+  url="$(solr_base "$server")/solr/$core/update?commit=true"
+  flush() {
+    [ ${#ids[@]} -gt 0 ] || return 0
+    body=$(printf '%s\n' "${ids[@]}" | jq -Rn '{delete: [inputs]}') || return 1
+    curl -fsS --max-time 60 "$url" -H 'Content-Type: application/json' \
+      -d "$body" -o /dev/null 2>/dev/null || return 1
+    sent=$((sent + ${#ids[@]})); ids=()
+  }
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    ids+=("$line")
+    [ ${#ids[@]} -lt 500 ] || flush || return 1
+  done
+  flush || return 1
+  echo "$sent"
+}
+
+# Indexing only ever overwrites, so a record that disappeared from the bucket
+# between two generations would stay searchable for ever
+prune_removed() {
+  local name=$1 server=$2 after=$3 before core old new gone count total=0
+  shift 3
+  for before in "$@"; do
+   [ -n "$before" ] && [ "$before" != "$after" ] || continue
+   for core in "${CORES[@]}"; do
+    old=$DUMPS/$name/$before/$(jq_state -r --arg n "$name" --arg c "$core" \
+          '.datasets[$n].sidecars[$c] // ""')
+    new=$DUMPS/$name/$after/$(jq_state -r --arg n "$name" --arg c "$core" \
+          '.datasets[$n].sidecars[$c] // ""')
+    [ -f "$old" ] && [ -f "$new" ] || continue
+    gone=$(comm -23 <(gunzip -c "$old" | jq -r '.file // empty' | sort -u) \
+                    <(gunzip -c "$new" | jq -r '.file // empty' | sort -u)) || return 1
+    [ -n "$gone" ] || continue
+    count=$(delete_documents "$server" "$core" <<<"$gone") || return 1
+    total=$((total + count))
+   done
+  done
+  [ "$total" -eq 0 ] || echo "$server: removed $total record(s) $name no longer has"
+}
+
+# Remove one dataset's documents. Scoped by our own field, never wider.
+delete_dataset() {
+  local server=$1 dataset=$2 core
+  for core in "${CORES[@]}"; do
+    curl -fsS --max-time 60 "$(solr_base "$server")/solr/$core/update?commit=true" \
+      -H 'Content-Type: application/json' \
+      -d "$(jq -nc --arg q "$DATASET_FIELD:$dataset" '{delete:{query:$q}}')" \
+      -o /dev/null 2>/dev/null || return 1
+  done
+}
+
+# database
+
+# One schema per dataset
+db_schema() { echo "${1//-/_}"; }
+db_run() { timeout "$INDEX_TIMEOUT" psql "$DATABASE" -v ON_ERROR_STOP=1 -q -o /dev/null "$@"; }
+db_drop() { db_run -c "DROP SCHEMA IF EXISTS \"$(db_schema "$1")\" CASCADE"; }
+db_rows() {
+  timeout "$INDEX_TIMEOUT" psql "$DATABASE" -Atq \
+    -c "SELECT count(*) FROM \"$(db_schema "$1")\".$2" 2>/dev/null
+}
+
+db_load() {
+  { printf 'DROP SCHEMA IF EXISTS "%s" CASCADE;\n' "$(db_schema "$1")"; gunzip -c "$2"; } |
+    db_run --single-transaction -f -
+}
+
+# reconciliation
+
+note_failure() {
+  state_apply --arg n "$1" --arg s "$2" --arg why "$3" --arg at "$(now)" '
+    .datasets[$n].failures[$s] |= ((. // {since:$at}) + {error:$why})'
+}
+clear_failure() {
+  state_apply --arg n "$1" --arg s "$2" 'del(.datasets[$n].failures[$s])'
+}
+
+reconcile() {
+  local force=${1:-no} servers=${2:-${SERVERS}}
+  local problems=0 server name generation expected found core catalogue ok
+  local seen_files seen_latest listing held started surplus
+
+  for server in $servers; do
+    if ! solr_alive "$server"; then
+      fail "$server: not reachable, or a core is not answering"
+      for name in $(jq_state -r '.datasets | keys[]'); do
+        note_failure "$name" "$server" "server unreachable"
+      done
+      problems=$((problems + 1))
+      continue
+    fi
+    # Reachable again
+    state_apply --arg s "$server" '
+      .datasets |= with_entries(
+        if .value.failures[$s].error == "server unreachable"
+        then .value.failures |= del(.[$s]) else . end)'
+
+    # Deletions first, so nothing below can re-deliver what should be gone.
+    for name in $(jq_state -r --arg s "$server" '
+          .datasets | to_entries[]
+          | select(.value.desired == "absent")
+          | select(.value.deleted[$s] == null) | .key'); do
+      if delete_dataset "$server" "$name"; then
+        state_apply --arg n "$name" --arg s "$server" --arg at "$(now)" \
+          '.datasets[$n].deleted[$s] = $at'
+        clear_failure "$name" "$server"
+        echo "$server: deleted $name"
+      else
+        fail "$server: cannot delete $name"
+        note_failure "$name" "$server" "deletion failed"
+        problems=$((problems + 1))
+      fi
+    done
+
+    # One dataset per invocation
+    for name in $(jq_state -r --arg s "$server" --arg force "$force" '
+          .datasets | to_entries[]
+          | select(.value.desired == "present")
+          | select(.value.generation != null)
+          | select($force == "yes" or .value.delivered[$s].generation != .value.generation
+                   or .value.attempting[$s] != null)
+          | .key'); do
+      generation=$(jq_state -r --arg n "$name" '.datasets[$n].generation')
+      held=$(jq_state -r --arg n "$name" --arg s "$server" '.datasets[$n].delivered[$s].generation // ""')
+      # What a previous run started writing and never acknowledged
+      started=$(jq_state -r --arg n "$name" --arg s "$server" '.datasets[$n].attempting[$s] // ""')
+      catalogue=$DUMPS/$name/$generation/$(jq_state -r --arg n "$name" '.datasets[$n].catalogue')
+      if [ ! -f "$catalogue" ]; then
+        fail "$name: $catalogue is missing; it will be fetched again"
+
+        state_apply --arg n "$name" --arg why "the local copy was lost; fetching it again" \
+          'del(.datasets[$n].generation) | del(.artifact)
+           | .datasets[$n].source.error = $why'
+        problems=$((problems + 1))
+        continue
+      fi
+
+      echo "Delivering $name to $server"
+      state_apply --arg n "$name" --arg s "$server" --arg g "$generation" \
+        '.datasets[$n].attempting[$s] = $g' || true
+
+      if [ "$(jq_state -r --arg n "$name" --arg s "$server" \
+                '.datasets[$n].rebuild[$s] // false')" = true ]; then
+        echo "$server: $name holds more than we put there; rebuilding it"
+        if ! delete_dataset "$server" "$name"; then
+          fail "$server: cannot clear $name"
+          note_failure "$name" "$server" "could not be cleared for a rebuild"
+          problems=$((problems + 1))
+          continue
+        fi
+      fi
+      seen_files=0; seen_latest=0
+      ok=yes
+      timeout "${INDEX_TIMEOUT:-1800}" \
+        "$EXECUTABLE" solr index "$catalogue" --server "$server" \
+        --batch-size "$BATCH_SIZE" --http-workers "$HTTP_WORKERS" \
+        --max-failed-batches "$MAX_FAILED_BATCHES" || ok=no
+      if [ "$ok" = no ]; then
+        fail "$server: indexing $name failed"
+        note_failure "$name" "$server" "indexing failed"
+        problems=$((problems + 1))
+        continue
+      fi
+
+      prune_removed "$name" "$server" "$generation" "$held" "$started" || {
+        fail "$server: could not remove what $name no longer has"
+        note_failure "$name" "$server" "stale records could not be removed"
+        problems=$((problems + 1))
+        continue
+      }
+
+      ok=yes
+      for core in "${CORES[@]}"; do
+        expected=$(jq_state -r --arg n "$name" --arg c "$core" \
+                     '.datasets[$n].source.counts[$c] // ""')
+        # No usable expected count is not permission to believe anything
+        if ! [[ $expected =~ ^[0-9]+$ ]] || [ "$expected" -lt 1 ]; then
+          note_failure "$name" "$server" "the snapshot gives no record count for $core"
+          ok=no; break
+        fi
+        found=$(count_docs "$server" "$core" "$name")
+        if ! [[ $found =~ ^[0-9]+$ ]]; then
+          note_failure "$name" "$server" "$core did not answer after the write"
+          ok=no; break
+        fi
+        # Rounded up, and never zero: a one-record dataset must still be found.
+        if [ "$found" -lt 1 ] || [ "$found" -lt $(( (expected * 80 + 99) / 100 )) ]; then
+          note_failure "$name" "$server" "$core holds $found of $expected"
+          ok=no; break
+        fi
+
+        if [ "$found" -gt "$expected" ]; then
+          surplus=$((found - expected))
+          state_apply --arg n "$name" --arg s "$server" --arg c "$core" \
+            --argjson x "$surplus" '.datasets[$n].surplus[$s + "/" + $c] = $x' || true
+        else
+          state_apply --arg n "$name" --arg s "$server" --arg c "$core" \
+            'if .datasets[$n].surplus then .datasets[$n].surplus |= del(.[$s + "/" + $c]) else . end' || true
+        fi
+        eval "seen_$core=\$found"
+      done
+      if [ "$ok" = no ]; then
+        fail "$server: $name was written but is not there"
+        problems=$((problems + 1))
+        continue
+      fi
+      state_apply --arg n "$name" --arg s "$server" --arg g "$generation" \
+        --arg at "$(now)" --argjson f "${seen_files:-0}" --argjson l "${seen_latest:-0}" '
+        .datasets[$n].delivered[$s] = {generation:$g, at:$at, files:$f, latest:$l}
+        | .datasets[$n].attempting |= del(.[$s])
+        | .datasets[$n].rebuild |= del(.[$s])' &&
+        clear_failure "$name" "$server" || problems=$((problems + 1))
+    done
+  done
+
+  reconcile_database "$force" || problems=$((problems + 1))
+  finalise_deletions
+  collect_garbage
+  return $(( problems > 0 ? 1 : 0 ))
+}
+
+# The database gets the same treatment as a server: deletions first, then the
+# datasets whose generation it is not yet holding.
+reconcile_database() {
+  local force=${1:-no} name generation dump problems=0 core expected found ok
+  [ -n "$DATABASE" ] || return 0
+  for name in $(jq_state -r '.datasets | to_entries[]
+        | select(.value.desired == "absent")
+        | select(.value.deleted.postgres == null) | .key'); do
+    if db_drop "$name"; then
+      state_apply --arg n "$name" --arg at "$(now)" '.datasets[$n].deleted.postgres = $at' &&
+        clear_failure "$name" postgres
+      echo "database: dropped $name"
+    else
+      fail "database: cannot drop $name"
+      note_failure "$name" postgres "deletion failed"
+      problems=$((problems + 1))
+    fi
+  done
+  for name in $(jq_state -r --arg force "$force" '.datasets | to_entries[]
+        | select(.value.desired == "present")
+        | select(.value.generation != null)
+        | select($force == "yes" or .value.delivered.postgres.generation != .value.generation)
+        | .key'); do
+    generation=$(jq_state -r --arg n "$name" '.datasets[$n].generation')
+    dump=$DUMPS/$name/$generation/$(jq_state -r --arg n "$name" '.datasets[$n].sql // ""')
+    if [ ! -f "$dump" ]; then
+      fail "$name: $dump is missing; it will be fetched again"
+      state_apply --arg n "$name" --arg why "the local copy was lost; fetching it again" \
+        'del(.datasets[$n].generation) | del(.artifact)
+         | .datasets[$n].source.error = $why'
+      problems=$((problems + 1))
+      continue
+    fi
+    echo "Loading $name into the database"
+    if ! db_load "$name" "$dump"; then
+      fail "database: loading $name failed"
+      note_failure "$name" postgres "loading failed"
+      problems=$((problems + 1))
+      continue
+    fi
+
+    ok=yes
+    for core in "${CORES[@]}"; do
+      expected=$(jq_state -r --arg n "$name" --arg c "$core" '.datasets[$n].source.counts[$c] // ""')
+      found=$(db_rows "$name" "$core")
+      if ! [[ $expected =~ ^[0-9]+$ ]] || ! [[ $found =~ ^[0-9]+$ ]] || [ "$found" != "$expected" ]; then
+        fail "database: $name.$core holds ${found:-no} rows, the snapshot says ${expected:-none}"
+        note_failure "$name" postgres "$core holds ${found:-no} rows of ${expected:-unknown}"
+        ok=no; break
+      fi
+    done
+    if [ "$ok" = no ]; then
+      problems=$((problems + 1))
+      continue
+    fi
+    state_apply --arg n "$name" --arg g "$generation" --arg at "$(now)" \
+      '.datasets[$n].delivered.postgres = {generation:$g, at:$at}' &&
+      clear_failure "$name" postgres || problems=$((problems + 1))
+  done
+  return $(( problems > 0 ? 1 : 0 ))
+}
+
+finalise_deletions() {
+  local name server done_everywhere
+  for name in $(jq_state -r '.datasets | to_entries[]
+        | select(.value.desired == "absent") | .key'); do
+    done_everywhere=yes
+    for server in $(destinations); do
+      [ "$(jq_state -r --arg n "$name" --arg s "$server" \
+            '.datasets[$n].deleted[$s] // ""')" != "" ] || done_everywhere=no
+    done
+    [ "$done_everywhere" = yes ] || continue
+    rm -rf "${DUMPS:?}/$name"
+    state_apply --arg n "$name" 'del(.datasets[$n])'
+    echo "$name: removed everywhere, dropped"
+  done
+}
+
+
+collect_garbage() {
+  local owner name keep dir
+
+  rm -rf "${STATE_DIR:?}"/.fetch.* "${STATE_DIR:?}"/.state.*.json
+  [ -d "$DUMPS" ] || return 0
+  for owner in "$DUMPS"/*; do
+    [ -d "$owner" ] || continue
+    name=$(basename "$owner")
+    if [ "$(jq_state -r --arg n "$name" '.datasets[$n] // "gone"')" = gone ]; then
+      rm -rf "$owner"; continue
+    fi
+    keep=$(jq_state -r --arg n "$name" '
+      [.datasets[$n].generation,
+       (.datasets[$n].delivered // {} | .[].generation),
+       (.datasets[$n].attempting // {} | .[])]
+      | map(select(. != null)) | unique | .[]')
+    rm -rf "${owner:?}"/.staging.*
+    for dir in "$owner"/*; do
+      [ -d "$dir" ] || continue
+      grep -qx "$(basename "$dir")" <<<"$keep" || rm -rf "$dir"
+    done
+  done
+}
+
+# the source
+
+b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
+
+mint_token() {
+  local now assertion installation response
+  [ -r "$CATALOGUE_APP_KEY" ] || { fail "cannot read $CATALOGUE_APP_KEY"; return 1; }
+  now=$(date -u +%s)
+  # Nine minutes, backdated one: GitHub rejects more than ten, and clocks drift.
+  assertion=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url).$(
+    printf '{"iat":%s,"exp":%s,"iss":"%s"}' "$((now - 60))" "$((now + 480))" \
+      "$CATALOGUE_APP_ID" | b64url)
+  assertion=$assertion.$(printf '%s' "$assertion" |
+    openssl dgst -sha256 -sign "$CATALOGUE_APP_KEY" -binary | b64url) || return 1
+
+  installation=${CATALOGUE_APP_INSTALLATION:-}
+  if [ -z "$installation" ]; then
+    # One less thing to configure: the app knows where it is installed.
+    installation=$(curl -fsS --max-time 30 -H "Authorization: Bearer $assertion" \
+      -H 'Accept: application/vnd.github+json' \
+      "$API/repos/$REPOSITORY/installation" | jq -r '.id // empty') || return 1
+    [ -n "$installation" ] ||
+      { fail "$REPOSITORY has no installation of app $CATALOGUE_APP_ID"; return 1; }
+  fi
+  response=$(curl -fsS --max-time 30 -X POST \
+    -H "Authorization: Bearer $assertion" \
+    -H 'Accept: application/vnd.github+json' \
+    -H 'X-GitHub-Api-Version: 2022-11-28' \
+    "$API/app/installations/$installation/access_tokens") || return 1
+  jq -r '.token // empty' <<<"$response"
+}
+
+access_token() {
+  if [ -n "${CATALOGUE_GITHUB_TOKEN:-}" ]; then
+    printf '%s' "$CATALOGUE_GITHUB_TOKEN"
+    return 0
+  fi
+  [ -n "${CATALOGUE_APP_ID:-}" ] && [ -n "${CATALOGUE_APP_KEY:-}" ] || return 1
+  local minted
+  minted=$(mint_token) && [ -n "$minted" ] || return 1
+  printf '%s' "$minted"
+}
+
+github() {
+  curl -fsS --max-time 30 -H "Authorization: Bearer $TOKEN" \
+    -H 'Accept: application/vnd.github+json' \
+    -H 'X-GitHub-Api-Version: 2022-11-28' "$API$1"
+}
+
+
+newest_bundle() {
+  local event page runs="" entry id artifacts found
+  for event in schedule push workflow_dispatch; do
+    page=$(github "/repos/$REPOSITORY/actions/workflows/$WORKFLOW/runs?branch=$BRANCH&per_page=10&event=$event") ||
+      return 2
+    entry=$(jq -c '.workflow_runs[] | {id, started: .run_started_at}' <<<"$page") || return 2
+    runs=$runs$entry$'\n'
+  done
+  runs=$(jq -sc 'sort_by(.started) | reverse | .[]' <<<"$runs") || return 2
+  while read -r entry; do
+    [ -n "$entry" ] || continue
+    id=$(jq -r .id <<<"$entry") || return 2
+    artifacts=$(github "/repos/$REPOSITORY/actions/runs/$id/artifacts") || return 2
+    found=$(jq -c --arg n "$ARTIFACT" 'first(.artifacts[]
+              | select(.name == $n and .expired == false)
+              | {artifact: .id, url: .archive_download_url})' <<<"$artifacts") || return 2
+    if [ -n "$found" ] && [ "$found" != null ]; then
+      jq -c --argjson r "$entry" '. + {run: $r.id}' <<<"$found" || return 2
+      return 0
+    fi
+  done <<<"$runs"
+  return 1
+}
+
+fetch() {
+  curl -fsSL --max-time 300 -H "Authorization: Bearer $TOKEN" "$1" -o "$2"
+}
+
+
+localise() {
+  local catalogue=$1 directory=$2
+  awk -v dir="$directory" '
+    function rebase(line, key,   value, n, parts) {
+      value = line
+      sub(/^[ \t]*[a-z]+:[ \t]*/, "", value)
+      gsub(/^["\047]|["\047]$/, "", value)
+      n = split(value, parts, "/")
+      return key ": \047" dir "/" parts[n] "\047"
+    }
+    /^[ \t]*prefix:/  { match($0, /^[ \t]*/); print substr($0, 1, RLENGTH) rebase($0, "prefix");  next }
+    /^[ \t]*urlpath:/ { match($0, /^[ \t]*/); print substr($0, 1, RLENGTH) rebase($0, "urlpath"); next }
+    { print }
+  ' "$catalogue" > "$catalogue.new" && mv -f "$catalogue.new" "$catalogue"
+}
+
+generations_intact() {
+  local listing name generation
+  listing=$(jq_state -r '.datasets | to_entries[]
+    | select(.value.desired == "present") | select(.value.generation != null)
+    | "\(.key) \(.value.generation)"') || return 1
+  while read -r name generation; do
+    [ -n "$name" ] || continue
+    [ "$(cat "$DUMPS/$name/$generation/.complete" 2>/dev/null)" = "$generation" ] || return 1
+  done <<<"$listing"
+}
+
+# Everything a snapshot entry has to carry before any of it is believed.
+CONTRACT='(.digest | type == "string") and (.catalogue | type == "string")
+  and (.sql | type == "string")
+  and (.sql as $q | .files | index($q) != null)
+  and (.files | type == "array") and (.files | length >= 1)
+  and ([.files[] | type == "string"] | all)
+  and (.catalogue as $c | .files | index($c) != null)
+  and (.sha256 | type == "object") and (.records | type == "number")
+  and (.counts | type == "object")
+  and (.counts.files | type == "number") and (.counts.latest | type == "number")
+  and (.sidecars | type == "object")
+  and ([.sidecars.files, .sidecars.latest] | all(type == "string"))
+  and ([.sidecars.files, .sidecars.latest] | all(. as $p | ($p | IN($e.files[]))))
+  and (.crawled_at | type == "string") and (.config | type == "string")'
+
+# Fetch the newest snapshot and record what it says. Never touches Solr.
+refresh() {
+  local bundle run artifact url work manifest configured published
+  local name entry parts part digest records floor previous prior_run reason accepted rejected stalled
+
+  TOKEN=$(access_token) ||
+    { warn "no GitHub credential: set CATALOGUE_GITHUB_TOKEN, or CATALOGUE_APP_ID \
+and CATALOGUE_APP_KEY, in the env file next to $CONFIG"; return 1; }
+
+  bundle=$(newest_bundle) || {
+    case $? in
+      2) warn "cannot ask GitHub what has been published; keeping what we have" ;;
+      *) warn "nothing has been published on $BRANCH yet" ;;
+    esac
+    return 1
+  }
+  artifact=$(jq -r .artifact <<<"$bundle")
+  run=$(jq -r .run <<<"$bundle")
+  url=$(jq -r .url <<<"$bundle")
+  [[ $artifact =~ ^[0-9]+$ && $run =~ ^[0-9]+$ ]] ||
+    { warn "GitHub named a snapshot I cannot identify"; return 1; }
+
+  # Run ids only ever increase, so an older one means retention, a deleted
+  # artifact or a failed lookup - never a newer release.
+  prior_run=$(jq_state -r '.run // 0')
+  if [[ $prior_run =~ ^[0-9]+$ ]] && [ "$run" -lt "$prior_run" ]; then
+    warn "run $run is older than the accepted run $prior_run; ignoring it"
+    return 1
+  fi
+
+  if [ "$(jq_state -r '.artifact // ""')" = "$artifact" ] && generations_intact; then
+    echo "Snapshot $artifact from run $run is already the one we have."
+    return 0
+  fi
+  echo "Fetching snapshot $artifact from run $run"
+
+  work=$(mktemp -d "$STATE_DIR/.fetch.XXXXXX") || return 1
+  # shellcheck disable=SC2064
+  trap "rm -rf '$work'" RETURN
+  fetch "$url" "$work/bundle.zip" || { warn "cannot download the snapshot"; return 1; }
+  unzip -qo "$work/bundle.zip" -d "$work/bundle" || { warn "the snapshot is not a zip"; return 1; }
+  manifest=$work/bundle/manifest.json
+  jq -e '.version == 2 and (.configured | type == "array") and (.configured | length >= 1)
+         and (.datasets | type == "object")' \
+     "$manifest" >/dev/null 2>&1 || { warn "the snapshot manifest is not the shape we expect"; return 1; }
+
+  local pinned running
+  pinned=$(jq -r '.crawler // ""' "$manifest")
+  running=$("$EXECUTABLE" --version 2>/dev/null | grep -o '[0-9][0-9.]*' | sed -n '1p') || running=""
+  [ -z "$pinned" ] || [ -z "$running" ] || [ "$pinned" = "$running" ] ||
+    warn "this snapshot was made with metadata-crawler $pinned, $EXECUTABLE is $running"
+
+  configured=$(jq -r '.configured[]' "$manifest") || { warn "unreadable configured list"; return 1; }
+  published=$(jq -r '.datasets | keys[]' "$manifest") || { warn "unreadable dataset list"; return 1; }
+
+  for name in $configured; do
+    valid_name "$name" || { warn "the snapshot configures an unusable name '$name'"; return 1; }
+  done
+  accepted=0; rejected=0; stalled=0
+
+  for name in $published; do
+    reason=""
+    entry=$(jq -c --arg n "$name" '.datasets[$n]' "$manifest") || reason="unreadable entry"
+    [ -n "$reason" ] || jq -e --argjson e "$entry" "$CONTRACT" <<<"$entry" >/dev/null 2>&1 ||
+      reason="the entry is not the shape we expect"
+    if [ -z "$reason" ]; then
+      digest=$(jq -r '.digest' <<<"$entry")
+      records=$(jq -r '.records' <<<"$entry")
+      grep -qx "$name" <<<"$configured" || reason="not a configured dataset"
+      [ -n "$reason" ] || valid_name "$name" || reason="unusable dataset name"
+      [ -n "$reason" ] || valid_digest "$digest" || reason="digest is not a sha256"
+      [ -n "$reason" ] || [ "$records" -ge 1 ] 2>/dev/null || reason="no records"
+      [ -n "$reason" ] ||
+        case $(jq -r .catalogue <<<"$entry") in */*|.*) reason="unsafe catalogue name" ;; esac
+      [ -n "$reason" ] ||
+        case $(jq -r .sql <<<"$entry") in */*|.*) reason="unsafe dump name" ;; esac
+    fi
+    if [ -z "$reason" ]; then
+      parts=$(jq -r '.files[]' <<<"$entry") || reason="unreadable file list"
+    fi
+    if [ -z "$reason" ]; then
+      while read -r part; do
+        case $part in */*|.*|"") reason="unsafe file name '$part'"; break ;; esac
+        [ -f "$work/bundle/$part" ] || { reason="missing from the snapshot: $part"; break; }
+        [ "$(sha256sum "$work/bundle/$part" | cut -d' ' -f1)" = \
+          "$(jq -r --arg p "$part" '.sha256[$p] // ""' <<<"$entry")" ] ||
+          { reason="checksum mismatch: $part"; break; }
+      done <<<"$parts"
+    fi
+    if [ -z "$reason" ]; then
+      previous=$(jq_state -r --arg n "$name" '.datasets[$n].source.records // 0')
+      floor=$(( previous * 80 / 100 ))
+      [ "$records" -ge "$floor" ] || reason="$records records, expected at least $floor"
+    fi
+    if [ -n "$reason" ]; then
+      fail "$name: $reason"
+      state_apply --arg n "$name" --arg why "$reason" '.datasets[$n].source.error = $why' || true
+      rejected=$((rejected + 1))
+      continue
+    fi
+    accepted=$((accepted + 1))
+    echo "$name $digest" >> "$work/accepted"
+  done
+
+  if [ "$rejected" -gt 0 ] && [ "$rejected" -gt $(( (accepted + rejected) / 2 )) ]; then
+    warn "$rejected of $((accepted + rejected)) datasets rejected; keeping what we have"
+    return 1
+  fi
+
+
+  if [ -s "$work/accepted" ]; then
+    while read -r name digest; do
+      entry=$(jq -c --arg n "$name" '.datasets[$n]' "$manifest")
+      if [ "$(jq_state -r --arg n "$name" '.datasets[$n].generation // ""')" != "$digest" ] ||
+         [ "$(cat "$DUMPS/$name/$digest/.complete" 2>/dev/null)" != "$digest" ]; then
+        install_generation "$name" "$digest" "$entry" "$work/bundle" || {
+          fail "$name: the new copy could not be written; keeping the one we have"
+          state_apply --arg n "$name" --arg why "installing the new copy failed" \
+            '.datasets[$n].source.error = $why' || true
+          stalled=1
+          continue
+        }
+      fi
+      state_apply --arg n "$name" --arg g "$digest" \
+        --arg cat "$(jq -r .catalogue <<<"$entry")" \
+        --arg sql "$(jq -r .sql <<<"$entry")" \
+        --argjson side "$(jq -c .sidecars <<<"$entry")" --argjson src "$(jq -c '{
+          digest: .digest, records: .records, counts: .counts, config: .config,
+          crawled_at: .crawled_at, revision: .crawled_revision,
+          run: .crawled_run, outcome: (.outcome // "crawled")}' <<<"$entry")" '
+        .datasets[$n] |= (. // {})
+        | .datasets[$n].desired = "present"
+        | .datasets[$n].generation = $g
+        | .datasets[$n].catalogue = $cat
+        | .datasets[$n].sql = $sql
+        | .datasets[$n].sidecars = $side
+        | .datasets[$n].source = $src
+        | del(.datasets[$n].deleted)' || fail "$name: could not record the new snapshot"
+    done < "$work/accepted"
+  fi
+
+  # Desired presence follows the configuration, never the payload
+  for name in $configured; do
+    state_apply --arg n "$name" '
+      .datasets[$n] |= (. // {})
+      | .datasets[$n].desired = "present"
+      | del(.datasets[$n].deleted)' || continue
+    grep -qx "$name" <<<"$published" ||
+      state_apply --arg n "$name" '.datasets[$n].source.error = "absent from the snapshot"' || true
+  done
+
+  # Gone from the repository: wanted absent, and kept until every server says
+  # so
+  for name in $(jq_state -r '.datasets | keys[]'); do
+    grep -qx "$name" <<<"$configured" && continue
+    [ "$(jq_state -r --arg n "$name" '.datasets[$n].desired // ""')" = absent ] && continue
+    state_apply --arg n "$name" '
+      .datasets[$n].desired = "absent"
+      | del(.datasets[$n].delivered) | del(.datasets[$n].deleted)' || continue
+    echo "$name: no longer configured, queued for deletion"
+  done
+
+  if [ "$stalled" -gt 0 ]; then
+    warn "not every copy could be written; this snapshot will be fetched again"
+    return 1
+  fi
+  state_apply --arg a "$artifact" --arg r "$run" '.artifact = $a | .run = $r'
+}
+
+install_generation() {
+  local name=$1 digest=$2 entry=$3 source=$4 staging target parts part
+  valid_name "$name" || { fail "refusing to install '$name'"; return 1; }
+  valid_digest "$digest" || { fail "refusing to install generation '$digest'"; return 1; }
+  target=$DUMPS/$name/$digest
+  staging=$DUMPS/$name/.staging.$$
+  parts=$(jq -r '.files[]' <<<"$entry") && [ -n "$parts" ] || return 1
+  rm -rf "$staging" && mkdir -p "$staging" || return 1
+  while read -r part; do
+    cp -p "$source/$part" "$staging/$part" || { rm -rf "$staging"; return 1; }
+  done <<<"$parts"
+  localise "$staging/$(jq -r .catalogue <<<"$entry")" "$target" &&
+    printf '%s\n' "$digest" > "$staging/.complete" || { rm -rf "$staging"; return 1; }
+  rm -rf "$target" && mv "$staging" "$target" || { rm -rf "$staging"; return 1; }
+}
+
+# commands
+
+cmd_pull() {
+  local source=0 delivery=0
+  refresh || source=1
+  reconcile no || delivery=1
+  return $(( source || delivery ))
+}
+
+cmd_index() { reconcile yes; }
+
+cmd_check() {
+  local server name core expected found damaged="" recent
+  for server in $SERVERS; do
+    for name in $(jq_state -r --arg s "$server" '
+          .datasets | to_entries[]
+          | select(.value.desired == "present")
+          | select(.value.delivered[$s] != null) | .key'); do
+      for core in "${CORES[@]}"; do
+        expected=$(jq_state -r --arg n "$name" --arg s "$server" --arg c "$core" \
+                     '.datasets[$n].delivered[$s][$c] // ""')
+        [[ $expected =~ ^[0-9]+$ ]] && [ "$expected" -gt 0 ] || continue
+        found=$(count_docs "$server" "$core" "$name")
+        [[ $found =~ ^[0-9]+$ ]] || continue   # Solr is down, not the same as empty
+        if [ "$found" -eq 0 ] || [ "$found" -lt $(( (expected * 80 + 99) / 100 )) ]; then
+          echo "$server $core $name: $found documents, expected $expected"
+          state_apply --arg n "$name" --arg s "$server" '.datasets[$n].delivered |= del(.[$s])'
+          note_failure "$name" "$server" "$core lost documents"
+          damaged="$damaged $server"
+          break
+        fi
+
+        if [ "$found" -gt "$expected" ]; then
+          echo "$server $core $name: $found documents, only $expected were delivered"
+          state_apply --arg n "$name" --arg s "$server" \
+            '.datasets[$n].delivered |= del(.[$s]) | .datasets[$n].rebuild[$s] = true'
+          note_failure "$name" "$server" "$core holds more than we delivered"
+          damaged="$damaged $server"
+          break
+        fi
+      done
+    done
+  done
+  damaged=$(tr ' ' '\n' <<<"$damaged" | grep -v '^$' | sort -u | tr '\n' ' ') || true
+  [ -n "$damaged" ] || return 0
+
+  recent=$(jq_state -r --arg since "$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S+00:00)" \
+             '[.repairs[] | select(. > $since)] | length')
+  if [ "$recent" -ge "$MAX_REPAIRS_PER_HOUR" ]; then
+    warn "$recent repairs in the last hour already; leaving it to the next pull"
+    return 1
+  fi
+  state_apply --arg at "$(now)" --arg since "$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S+00:00)" \
+    '.repairs = ([.repairs[] | select(. > $since)] + [$at])'
+  echo "Repairing:$damaged"
+  reconcile no "$damaged"
+}
+
+cmd_report() {
+  local worst=ok name entry crawled level note pending age failing since stuck stale report
+  report=$(mktemp)
+  if [ "$(jq_state -r '.datasets | length')" = 0 ]; then
+    worst=critical
+    echo "Waterpark catalogue: not initialised - no snapshot has been accepted" > "$report"
+  else
+    echo "Waterpark catalogue: PLACEHOLDER (snapshot $(jq_state -r '.artifact // "?"'))" > "$report"
+    for name in $(jq_state -r '.datasets | keys[]'); do
+      entry=$(jq_state -c --arg n "$name" '.datasets[$n]')
+      crawled=$(age_hours "$(jq -r '.source.crawled_at // ""' <<<"$entry")") || crawled=""
+      failing=$(jq -r '(.failures // {}) | to_entries | map("\(.key): \(.value.error)") | join("; ")' <<<"$entry")
+      since=$(jq -r '[(.failures // {})[].since] | min // ""' <<<"$entry")
+      stuck=$(age_hours "$since") || stuck=""
+      level=ok
+      if [ "$(jq -r '.desired' <<<"$entry")" = absent ]; then
+        pending=$(pending_servers "$name" deleted)
+        note="awaiting deletion on$pending"
+        [ -z "$failing" ] || note="$note | $failing"
+        level=warning
+        if [ -n "$stuck" ] && [ "$stuck" -ge "$CRITICAL_AFTER" ]; then level=critical; fi
+      else
+        pending=$(pending_servers "$name" delivered)
+        note=$(jq -r '.source.error // ""' <<<"$entry")
+        [ -z "$pending" ] || note="not on$pending${note:+; $note}"
+        [ -z "$failing" ] || note="$note${note:+ | }$failing"
+        stale=$(jq -r '(.surplus // {}) | to_entries
+                  | map("\(.value) stale on \(.key)") | join(", ")' <<<"$entry")
+        [ -z "$stale" ] || note="$note${note:+ | }$stale"
+        if { [ -n "$stuck" ] && [ "$stuck" -ge "$CRITICAL_AFTER" ]; } ||
+           { [ -n "$crawled" ] && [ "$crawled" -ge "$CRITICAL_AFTER" ]; }; then
+          level=critical
+        elif [ -n "$pending" ] || [ -n "$failing" ] || [ -n "$stale" ] || [ -z "$crawled" ] ||
+             [ "$crawled" -ge "$WARN_AFTER" ] ||
+             [ -n "$(jq -r '.source.error // ""' <<<"$entry")" ]; then
+          level=warning
+        fi
+      fi
+      age=${crawled:+${crawled}h}; age=${age:-never}
+      printf '  %-8s %-34s %9s rec  crawled %-8s %-8s %s\n' \
+        "$level" "$name" "$(jq -r '.source.records // 0' <<<"$entry")" "$age" \
+        "$(jq -r '.source.outcome // "?"' <<<"$entry")" "$note" >> "$report"
+      case $level in
+        critical) worst=critical ;;
+        warning) [ "$worst" = critical ] || worst=warning ;;
+      esac
+      state_apply --arg n "$name" --arg l "$level" '.datasets[$n].level = $l' || true
+    done
+    sed -i "s/PLACEHOLDER/$worst/" "$report"
+  fi
+
+  cat "$report"
+  notify "$worst" "$report"
+  rm -f "$report"
+  [ "$worst" = ok ]
+}
+
+pending_servers() {
+  local name=$1 kind=$2 server out=""
+  for server in $(destinations); do
+    if [ "$kind" = delivered ]; then
+      [ "$(jq_state -r --arg n "$name" --arg s "$server" \
+            '.datasets[$n] | (.generation // "unknown") as $g
+             | if $g == "unknown" then "no" else
+                 (if (.delivered[$s].generation // "") == $g then "yes" else "no" end)
+               end')" = yes ] || out="$out $server"
+    else
+      [ "$(jq_state -r --arg n "$name" --arg s "$server" \
+            '.datasets[$n].deleted[$s] // ""')" != "" ] || out="$out $server"
+    fi
+  done
+  echo "$out"
+}
+
+notify() {
+  local worst=$1 report=$2 changed
+  if [ "$(jq_state -r '.datasets | length')" = 0 ]; then
+
+    changed=$([ "$(jq_state -r '.notified // ""')" = "$worst" ] && echo 0 || echo 1)
+  else
+    changed=$(jq_state -r '[.datasets | to_entries[]
+                | select(.value.level != .value.notified) | .key] | length')
+  fi
+  [ "$changed" -gt 0 ] || return 0
+  [ -n "${WATERPARK_NOTIFY_TO:-}" ] || return 0
+  command -v mail >/dev/null || { warn "mail is not installed; nothing was sent"; return 0; }
+  if timeout 60 mail -s "Waterpark catalogue: $worst" "$WATERPARK_NOTIFY_TO" < "$report"; then
+    state_apply --arg w "$worst" \
+      '.notified = $w | .datasets |= with_entries(.value.notified = .value.level)'
+  else
+    warn "mail failed; the notification will be retried"
+  fi
+}
+
+# main
+
+[ $# -ge 1 ] || die "usage: waterpark-catalogue pull|index|check|report"
+command=$1
+[ -r "$CONFIG" ] || die "cannot read $CONFIG"
+# shellcheck disable=SC1090
+. "$CONFIG"
+: "${REPOSITORY:?}" "${WORKFLOW:?}" "${BRANCH:?}" "${ARTIFACT:?}" "${EXECUTABLE:?}" "${SERVERS:?}"
+: "${DATASET_FIELD:=dataset}" "${BATCH_SIZE:=5000}" "${HTTP_WORKERS:=2}"
+: "${MAX_FAILED_BATCHES:=0}" "${MAX_REPAIRS_PER_HOUR:=3}"
+: "${WARN_AFTER:=30}" "${CRITICAL_AFTER:=96}" "${INDEX_TIMEOUT:=1800}"
+# The connection url belongs with the credentials, not in catalogue.conf
+DATABASE=${CATALOGUE_POSTGRES:-}
+
+for tool in curl jq unzip flock awk grep sed sha256sum gunzip date timeout mktemp; do
+  command -v "$tool" >/dev/null || die "$tool is not installed"
+done
+[ -z "${CATALOGUE_APP_ID:-}" ] || command -v openssl >/dev/null ||
+  die "CATALOGUE_APP_ID is set but openssl is not installed"
+[ -z "$DATABASE" ] || command -v psql >/dev/null ||
+  die "CATALOGUE_POSTGRES is set but psql is not installed"
+
+
+mkdir -p "$STATE_DIR" "$DUMPS"
+# Every command takes the same lock, so a hand-run one cannot race the timer
+exec 9>"$STATE_DIR/.lock"
+flock -w "${LOCK_WAIT:-1800}" 9 || die "another waterpark-catalogue is running"
+load_state
+
+case $command in
+  pull)   cmd_pull ;;
+  index)  cmd_index ;;
+  check)  cmd_check ;;
+  report) cmd_report ;;
+  *)      die "unknown command '$command'" ;;
+esac

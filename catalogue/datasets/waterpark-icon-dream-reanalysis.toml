@@ -1,0 +1,102 @@
+# ============================================================================
+# ICON Deames
+# s3://icon-dream/healpix/reanalysis/<experiment>/<model>/<time_frequency>/level_*
+# example: s3://icon-dream/healpix/reanalysis/icon-dream-global/icon/hourly/level_0.zarr
+#          s3://icon-dream/healpix/icon-dream-global/fx/level_0.zarr/
+# TODO: The directory should be unified from time freq level.
+# ============================================================================
+
+[waterpark-icon-dream-reanalysis]
+fs_type = "s3"
+root_path = "s3://icon-dream/healpix/reanalysis/icon-dream-global/icon/hourly/"
+drs_format = "waterpark-icon-dream-reanalysis"
+glob_pattern = "level_*.zarr"
+
+[waterpark-icon-dream-reanalysis.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+
+[waterpark-icon-dream-reanalysis.defaults]
+project = "waterpark"
+product = "icon-dream"
+experiment = "icon-dream-global"
+model = "icon"
+institute = "dwd"
+realm = "atmosphere"
+time_frequency = "1hr"
+bbox = [-180.0, 180.0, -90.0, 90.0]
+stac_collection_title = "product|ICON-DREAM Reanalysis (HEALPix)"
+stac_collection_description = "product|ICON-DREAM (ICON Dual-resolution Reanalysis for Emulators, Applications and Monitoring), the DWD reanalysis based on the ICON framework at 13 km global / 6.5 km European resolution, covering 2010 onward, remapped to HEALPix and served as Zarr. Includes hourly reanalysis and associated fixed model fields. The thumbnail image come from https://arxiv.org/html/2608.24651v1"
+stac_collection_documentation_url = "product|https://opendata.dwd.de/climate_environment/REA/ICON-DREAM-Global/"
+stac_collection_keywords = "product|DWD"
+stac_collection_thumbnail_url = "product|https://arxiv.org/html/2608.24651v1/pictures/024h.png"
+stac_collection_thumbnail_type = "product|image/png"
+
+[drs_settings.dialect.waterpark-icon-dream-reanalysis]
+sources = ["path", "data"]
+
+[drs_settings.dialect.waterpark-icon-dream-reanalysis.path_specs]
+dir_parts = []
+file_parts = ["_", "level_type"]
+
+[drs_settings.dialect.waterpark-icon-dream-reanalysis.data_specs]
+read_kws = { consolidated = false, decode_times = true, decode_coords = true, create_default_indexes = false }
+
+[drs_settings.dialect.waterpark-icon-dream-reanalysis.data_specs.globals]
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+
+[drs_settings.dialect.waterpark-icon-dream-reanalysis.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"
+
+[drs_settings.dialect.waterpark-icon-dream-reanalysis.data_specs.stats.time]
+stat = "range"
+coords = "time"
+
+[waterpark-icon-dream-fx]
+fs_type = "s3"
+root_path = "s3://icon-dream/healpix/icon-dream-global/fx/"
+drs_format = "waterpark-icon-dream-fx"
+glob_pattern = "level_*.zarr"
+
+[waterpark-icon-dream-fx.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+
+[waterpark-icon-dream-fx.defaults]
+project = "waterpark"
+product = "icon-dream"
+experiment = "icon-dream-global"
+model = "icon"
+institute = "dwd"
+realm = "atmosphere"
+time_frequency = "fx"
+time = "fx"
+bbox = [-180.0, 180.0, -90.0, 90.0]
+stac_collection_title = "product|ICON-DREAM Reanalysis (HEALPix)"
+stac_collection_description = "product|ICON-DREAM (ICON Dual-resolution Reanalysis for Emulators, Applications and Monitoring), the DWD reanalysis based on the ICON framework at 13 km global / 6.5 km European resolution, covering 2010 onward, remapped to HEALPix and served as Zarr. Includes hourly reanalysis and associated fixed model fields. The thumbnail image come from https://arxiv.org/html/2608.24651v1"
+stac_collection_documentation_url = "product|https://opendata.dwd.de/climate_environment/REA/ICON-DREAM-Global/"
+stac_collection_keywords = "product|DWD"
+stac_collection_thumbnail_url = "product|https://arxiv.org/html/2608.24651v1/pictures/024h.png"
+stac_collection_thumbnail_type = "product|image/png"
+
+[drs_settings.dialect.waterpark-icon-dream-fx]
+sources = ["path", "data"]
+
+[drs_settings.dialect.waterpark-icon-dream-fx.path_specs]
+dir_parts = []
+file_parts = ["_", "level_type"]
+
+[drs_settings.dialect.waterpark-icon-dream-fx.data_specs]
+read_kws = { consolidated = true, decode_times = false, decode_coords = true, create_default_indexes = false }
+
+[drs_settings.dialect.waterpark-icon-dream-fx.data_specs.globals]
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+
+[drs_settings.dialect.waterpark-icon-dream-fx.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"

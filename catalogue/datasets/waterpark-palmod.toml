@@ -1,0 +1,61 @@
+# ============================================================================
+# palmod:
+# s3://palmod/<model_exp_ens>/<var_table_period>/test/level_*.zarr
+# example: MPI-ESM1-2-1-CR_transient-deglaciation-interactive_r1i1p1f1/tas_Amon_0000101-2500012/test/level_0.zarr
+# TODO: `test` in the directory structure is misleading. We could either remove/rename the `test` or if this dataset is really a test
+# we can exclude the bucket until it becomes operational.
+# ============================================================================
+[waterpark-palmod]
+fs_type = "s3"
+root_path = "s3://palmod/"
+drs_format = "waterpark-palmod"
+glob_pattern = "level_*.zarr"
+[waterpark-palmod.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+[waterpark-palmod.defaults]
+project = "waterpark"
+product = "palmod"
+realm = "atmosphere"
+stac_collection_title = "product|PalMod (HEALPix)"
+stac_collection_description = "product|Paleoclimate transient Earth-system simulations from the German PalMod initiative (e.g. MPI-ESM transient deglaciation experiments), remapped to a HEALPix grid and served as Zarr for the Waterpark data pool. The thumbnail image has been taken from https://cp.copernicus.org/articles/20/865/2024/"
+stac_collection_documentation_url = "product|https://www.palmod.de/"
+stac_collection_keywords = "product|paleoclimate"
+stac_collection_thumbnail_url = "product|https://cp.copernicus.org/articles/20/865/2024/cp-20-865-2024-f06-web.png"
+stac_collection_thumbnail_type = "product|image/png"
+[drs_settings.dialect.waterpark-palmod]
+sources = ["path", "data"]
+[drs_settings.dialect.waterpark-palmod.path_specs]
+dir_parts  = ["experiment", "variable", "time_aggregation"]
+file_parts = ["_", "level_type"]
+[drs_settings.dialect.waterpark-palmod.data_specs]
+read_kws = { consolidated = true, decode_times = true, use_cftime = true, decode_coords = "all" }
+[drs_settings.dialect.waterpark-palmod.data_specs.globals]
+institute_raw = "institution"
+experiment = "experiment_id"
+model = "source_id"
+ensemble = "variant_label"
+cmor_table = "table_id"
+time_frequency = "frequency"
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+[drs_settings.dialect.waterpark-palmod.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"
+[drs_settings.dialect.waterpark-palmod.data_specs.stats.time]
+# TODO: time should be fixed in this dataset. currently:
+# Start boundary 0001-01-01T00:00:00
+# End boundary 25001-01-01T00:00:00
+stat = "minmax"
+var = "time_bnds"
+[drs_settings.special.institute]
+type = "call"
+call = '''
+(lambda name: {
+    "max planck institute for meteorology, hamburg 20146, germany": "mpi-m",
+    "max planck institute for meteorology": "mpi-m",
+}.get(" ".join(name.split()).casefold(), name))(
+    {{ institute_raw | default("", true) | tojson }}
+)
+'''

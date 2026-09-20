@@ -1,0 +1,195 @@
+# ============================================================================
+# obs / EarthCARE
+# s3://obs/earthcare/<campaign>/level_*.zarr
+# example: ACM_CAP_2B_2024-08-10/level_0.zarr ... /level_11.zarr  (+ a `test/` dir)
+# TODO: This dataset has a `test` directory that it could be better to be remove/renamed or be moved out of the obs bucket
+# Also apart from that, the whole zoom level stores in `/test` don't have the time dim
+# ============================================================================
+[waterpark-obs-earthcare]
+fs_type = "s3"
+root_path = "s3://obs/earthcare/"
+drs_format = "waterpark-obs-earthcare"
+glob_pattern = "level_*.zarr"
+[waterpark-obs-earthcare.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+[waterpark-obs-earthcare.defaults]
+project = "waterpark"
+product = "obs"
+model = "EarthCARE"
+realm = "atmosphere"
+institute = "esa-jaxa"
+bbox = [-180.0, 180.0, -90.0, 90.0]
+stac_collection_title = "product|EarthCARE (HEALPix)"
+stac_collection_description = "product|Observations from ESA's EarthCARE (Earth Cloud, Aerosol and Radiation Explorer) mission - cloud, aerosol and radiation products (e.g. ACM-CAP) - remapped to a HEALPix grid and served as Zarr for the Waterpark data pool. The thumbnail image has been taken from https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2025GL119977"
+stac_collection_documentation_url = "product|https://earth.esa.int/eogateway/missions/earthcare"
+stac_collection_keywords = "product|satellite"
+stac_collection_thumbnail_url = "product|https://agupubs.onlinelibrary.wiley.com/cms/asset/d0ccd1ae-d4be-4890-8385-26f7fda29b75/grl72372-fig-0001-m.jpg"
+stac_collection_thumbnail_type = "product|image/jpeg"
+
+[drs_settings.dialect.waterpark-obs-earthcare]
+sources = ["path", "data"]
+
+[drs_settings.dialect.waterpark-obs-earthcare.path_specs]
+dir_parts = []
+file_parts = ["_", "level_type"]
+
+[drs_settings.dialect.waterpark-obs-earthcare.data_specs]
+read_kws = { consolidated = true, decode_times = false, decode_coords = true, create_default_indexes = false }
+
+[drs_settings.dialect.waterpark-obs-earthcare.data_specs.globals]
+institute = "institution"
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+
+[drs_settings.dialect.waterpark-obs-earthcare.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"
+
+[drs_settings.dialect.waterpark-obs-earthcare.special.experiment]
+type = "call"
+call = '''(lambda folder: "earthcare-iwp-test" if folder == "test" else folder.rsplit("_", 1)[0].replace("_", "-").lower())(
+    {{ file | tojson }}.rstrip("/").rsplit("/", 2)[-2]
+)
+'''
+
+[drs_settings.dialect.waterpark-obs-earthcare.special.time_frequency]
+type = "call"
+call = '''(lambda folder: "day" if __import__("re").fullmatch(r"ACM_CAP_2B_\d{4}-\d{2}-\d{2}", folder) else "fx")(
+    {{ file | tojson }}.rstrip("/").rsplit("/", 2)[-2]
+)
+'''
+
+[drs_settings.dialect.waterpark-obs-earthcare.special.time]
+type = "call"
+call = '''
+
+(lambda folder, dt: [
+    folder[-10:] + "T00:00:00",
+    (dt.datetime.fromisoformat(folder[-10:]) + dt.timedelta(days=1)).isoformat()
+] if __import__("re").fullmatch(r"ACM_CAP_2B_\d{4}-\d{2}-\d{2}", folder) else None)(
+    {{ file | tojson }}.rstrip("/").rsplit("/", 2)[-2],
+    __import__("datetime")
+)
+'''
+
+# ============================================================================
+# obs / EarthCARE / ellipsoid
+# s3://obs/earthcare/ellipsoid/earthcare_*_level_*.zarr
+# example: obs/earthcare/ellipsoid/earthcare_ACM_CAP_2B_01164A_level_14.zarr/
+# ============================================================================
+
+[waterpark-obs-earthcare-ellipsoid]
+fs_type = "s3"
+root_path = "s3://obs/earthcare/ellipsoid/"
+drs_format = "waterpark-obs-earthcare-ellipsoid"
+glob_pattern = "earthcare_*_level_*.zarr"
+
+[waterpark-obs-earthcare-ellipsoid.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+
+[waterpark-obs-earthcare-ellipsoid.defaults]
+project = "waterpark"
+product = "obs"
+model = "EarthCARE"
+realm = "atmosphere"
+institute = "esa-jaxa"
+stac_collection_title = "product|EarthCARE (HEALPix)"
+stac_collection_description = "product|Observations from ESA's EarthCARE (Earth Cloud, Aerosol and Radiation Explorer) mission - cloud, aerosol and radiation products (e.g. ACM-CAP) - remapped to a HEALPix grid and served as Zarr for the Waterpark data pool. The thumbnail image has been taken from https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2025GL119977"
+stac_collection_documentation_url = "product|https://earth.esa.int/eogateway/missions/earthcare"
+stac_collection_keywords = "product|satellite"
+stac_collection_thumbnail_url = "product|https://agupubs.onlinelibrary.wiley.com/cms/asset/d0ccd1ae-d4be-4890-8385-26f7fda29b75/grl72372-fig-0001-m.jpg"
+stac_collection_thumbnail_type = "product|image/jpeg"
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid]
+sources = ["path", "data"]
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid.path_specs]
+dir_parts = []
+file_parts = ["_", "earthcare_product_a", "earthcare_product_b", "earthcare_product_level", "earthcare_orbit_frame", "_", "level_type"]
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid.data_specs]
+read_kws = { consolidated = true, decode_times = true, decode_coords = true, create_default_indexes = false }
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid.data_specs.globals]
+institute = "institution"
+grid_label = "healpix_indexing"
+earthcare_declared_level = "healpix_level"
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid.data_specs.var_attrs.earthcare_variables_raw]
+var = "*"
+attr = "short_name"
+default = "__name__"
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid.data_specs.stats.time_frequency]
+stat = "timedelta"
+var = "time"
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid.data_specs.stats.bbox]
+stat = "bbox"
+lat = "latitude"
+lon = "longitude"
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid.data_specs.stats.earthcare_time_raw]
+stat = "minmax"
+var = "time"
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid.special.experiment]
+type = "call"
+call = '''"-".join([
+    {{ earthcare_product_a | tojson }},
+    {{ earthcare_product_b | tojson }},
+    {{ earthcare_product_level | tojson }}
+]).lower()
+'''
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid.special.grid_id]
+type = "call"
+call = '''str(2 ** int({{ earthcare_declared_level | tojson }}))
+'''
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid.special.variable]
+type = "call"
+call = '''
+[name for name in {{ earthcare_variables_raw | tojson }}
+ if name.casefold() not in {
+    "time", "latitude", "longitude", "cell_ids", "cell", "crs", "height",
+    "elevation", "geoid_offset",
+    "processing_start_time", "sensing_start_time",
+    "orbit_number", "orbit_and_frame", "trim_index_offset",
+    "baseline", "file_type", "filename", "frame_id",
+    "norm_gradient", "iterations_count", "iterations_first_pass_count",
+    "cost_function", "observation_variable_count", "state_variable_count"
+ }
+ and not any(
+    __import__("fnmatch").fnmatchcase(name.casefold(), pattern)
+    for pattern in (
+        "*_cost_function",
+        "*_observation_variable_count",
+        "*_state_variable_count",
+        "*_degrees_of_freedom",
+        "*_kernel_*",
+        "*_error_corr*",
+        "*_forward",
+        "*_wavelength",
+        "*_azimuth_angle",
+        "*_zenith_angle",
+        "*_reference_level_height"
+    )
+ )]
+'''
+
+[drs_settings.dialect.waterpark-obs-earthcare-ellipsoid.special.time]
+type = "call"
+call = '''
+
+(lambda pd, values: [
+    pd.Timestamp(values[0]).floor("min").isoformat(),
+    pd.Timestamp(values[-1]).ceil("min").isoformat()
+] if len(values) == 2 and all(pd.notna(pd.Timestamp(value)) for value in values) else None)(
+    __import__("pandas"),
+    {{ earthcare_time_raw | default([], true) | map("string") | list | tojson }}
+)
+'''

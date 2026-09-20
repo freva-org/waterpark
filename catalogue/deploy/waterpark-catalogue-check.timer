@@ -1,0 +1,16 @@
+[Unit]
+Description=Check that Solr still holds the Waterpark catalogue
+
+# The Solr servers are rotated on different days by other freva projects, which
+# deletes Waterpark's documents. This notices within twenty minutes and rebuilds
+# the index from the metadata store, which takes minutes rather than a re-crawl.
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=20min
+RandomizedDelaySec=2min
+AccuracySec=1min
+Unit=waterpark-catalogue@check.service
+
+[Install]
+WantedBy=timers.target

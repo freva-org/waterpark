@@ -1,0 +1,64 @@
+# ============================================================================
+# ICDC / IMERG
+# s3://icdc/healpix/atmosphere/IMERG/*/level_*.zarr/
+# example: s3://icdc/healpix/atmosphere/IMERG/PT30M/level_0.zarr/
+# TODO: the following look incompatible since we already have the level_9:
+# level_9_2025.zarr
+# level_9_chunked.zarr
+# ============================================================================
+
+[waterpark-icdc-imerg]
+fs_type = "s3"
+root_path = "s3://icdc/healpix/atmosphere/IMERG/"
+drs_format = "waterpark-icdc-imerg"
+glob_pattern = "level_[0-9].zarr|level_[0-9][0-9].zarr"
+[waterpark-icdc-imerg.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+[waterpark-icdc-imerg.defaults]
+project = "waterpark"
+product = "icdc"
+realm = "atmosphere"
+experiment = "IMERG"
+model = "gpm-imerg"
+institute = "nasa-gsfc"
+stac_collection_title = "product|ICDC Satellite Observations (HEALPix)"
+stac_collection_description = "product|Satellite remote-sensing climate products curated by the Integrated Climate Data Center (ICDC), University of Hamburg (CERES radiation, GPM/IMERG precipitation, MODIS, ORAS5), remapped to HEALPix and served as Zarr. The thumbnail image comes from https://www.nature.com/articles/s41467-021-23321-7"
+stac_collection_documentation_url = "product|https://www.cen.uni-hamburg.de/en/icdc.html"
+stac_collection_keywords = "product|remote sensing"
+stac_collection_thumbnail_url = "product|https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-021-23321-7/MediaObjects/41467_2021_23321_Fig2_HTML.png?as=webp"
+stac_collection_thumbnail_type = "product|image/jpeg"
+[drs_settings.dialect.waterpark-icdc-imerg]
+sources = ["path", "data"]
+[drs_settings.dialect.waterpark-icdc-imerg.path_specs]
+dir_parts = []
+file_parts = ["_", "level_type"]
+[drs_settings.dialect.waterpark-icdc-imerg.data_specs]
+read_kws = { consolidated = true, decode_times = true }
+[drs_settings.dialect.waterpark-icdc-imerg.data_specs.globals]
+institute = "institution"
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+[drs_settings.dialect.waterpark-icdc-imerg.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"
+[drs_settings.dialect.waterpark-icdc-imerg.data_specs.stats.time]
+stat = "range"
+coords = "time"
+[drs_settings.dialect.waterpark-icdc-imerg.special.time_frequency]
+type = "call"
+call = '''
+(lambda value: {
+    "PT15M": "15min",
+    "PT30M": "30min",
+    "PT1H":  "1hr",
+    "PT3H":  "3hr",
+    "PT6H":  "6hr",
+    "P1D":   "day",
+    "P1M":   "mon",
+    "P1Y":   "yr",
+}.get(value.upper(), value.lower()))(
+    {{ file | tojson }}.rstrip("/").rsplit("/", 2)[-2]
+)
+'''

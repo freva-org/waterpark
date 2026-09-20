@@ -16,6 +16,7 @@ pages are shared between the two sites; see [Shared pages](#shared-pages).
 | | |
 |---|---|
 | `landingpage/` | mkdocs site: content, theme overrides, build tooling |
+| `catalogue/` | crawler configs, and the service that delivers what CI publishes |
 | `.dev/` | development stack: compose file, proxy config, secrets |
 | `Makefile` | entry point for everything below |
 
@@ -197,13 +198,14 @@ hand-written descriptions. Needs `WATERPARK_S3_KEY` and
 
 ## Continuous integration
 
-Five workflows, all with `workflow_dispatch` so they can be run by hand
+Six workflows, all with `workflow_dispatch` so they can be run by hand
 from the Actions tab.
 
 | workflow | runs on | what it does |
 |---|---|---|
 | `docs` | changes under `landingpage/` | strict mkdocs build; publishes to `gh-pages` from `main` |
 | `smoke` | changes to either, or to `dev/` | brings up the compose stack and runs the `stack`-marked tests |
+| `catalogue` | changed dataset configs, and daily | validates them, crawls S3, publishes a complete snapshot, and files one issue per broken dataset |
 | `sync-shared` | weekly, or on demand | re-pins the shared pages and opens a pull request |
 | `gallery` | changes under `landingpage/examples/`, weekly | runs the examples against S3 and opens a pull request with the refreshed figures |
 

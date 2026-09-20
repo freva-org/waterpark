@@ -1,0 +1,192 @@
+# ============================================================================
+# DYAMOND
+# s3://dyamond/icon-sap-5km/PT15M/level_*.zarr
+# example: s3://dyamond/healpix/dyamond-winter/scream-3km/PT15M/level_0.zarr/
+# ============================================================================
+
+[waterpark-dyamond]
+fs_type = "s3"
+root_path = "s3://dyamond/icon-sap-5km/"
+drs_format = "waterpark-dyamond"
+glob_pattern = "level_[0-9].zarr|level_[0-9][0-9].zarr"
+
+[waterpark-dyamond.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+
+[waterpark-dyamond.defaults]
+project = "waterpark"
+product = "dyamond"
+experiment = "dyamond-winter"
+model = "icon-sap-5km"
+institute = "mpi-m"
+realm = "atmosphere"
+bbox = [-180.0, 180.0, -90.0, 90.0]
+stac_collection_title = "product|DYAMOND (HEALPix)"
+stac_collection_description = "product|Output from the DYAMOND (DYnamics of the Atmospheric general circulation Modeled On Non-hydrostatic Domains) global storm-resolving model intercomparison, remapped to HEALPix and served as Zarr. This collection includes ICON-SAP-5km, SCREAM-3km and UM-5km atmospheric output from DYAMOND Winter."
+stac_collection_documentation_url = "product|https://easy.gems.dkrz.de/DYAMOND/index.html"
+stac_collection_keywords = "product|global storm-resolving"
+stac_collection_thumbnail_url = "product|https://mpimet.mpg.de/fileadmin/_processed_/9/f/csm_icon_nicam_arpege_fv3_54ff6e9007.jpg"
+stac_collection_thumbnail_type = "product|image/jpeg"
+
+[drs_settings.dialect.waterpark-dyamond]
+sources = ["path", "data"]
+
+[drs_settings.dialect.waterpark-dyamond.path_specs]
+dir_parts = []
+file_parts = ["_", "level_type"]
+
+[drs_settings.dialect.waterpark-dyamond.data_specs]
+read_kws = { consolidated = true, decode_times = true, decode_coords = true, create_default_indexes = false }
+
+[drs_settings.dialect.waterpark-dyamond.data_specs.globals]
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+
+[drs_settings.dialect.waterpark-dyamond.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"
+
+[drs_settings.dialect.waterpark-dyamond.data_specs.stats.time]
+stat = "range"
+coords = "time"
+
+[drs_settings.dialect.waterpark-dyamond.special.time_frequency]
+type = "call"
+call = '''
+(lambda value: {
+    "PT15M": "15min", "PT30M": "30min",
+    "PT1H": "1hr", "PT3H": "3hr", "PT6H": "6hr",
+    "P1D": "day", "P1M": "mon", "P1Y": "yr",
+}.get(value.upper(), value.lower()))(
+    {{ file | tojson }}.rstrip("/").rsplit("/", 2)[-2]
+)
+'''
+
+[waterpark-dyamond-scream]
+fs_type = "s3"
+root_path = "s3://dyamond/healpix/dyamond-winter/scream-3km/"
+drs_format = "waterpark-dyamond-scream"
+glob_pattern = "level_[0-9].zarr|level_[0-9][0-9].zarr"
+
+[waterpark-dyamond-scream.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+
+[waterpark-dyamond-scream.defaults]
+project = "waterpark"
+product = "dyamond"
+experiment = "dyamond-winter"
+model = "scream-3km"
+institute = "e3sm-project"
+realm = "atmosphere"
+bbox = [-180.0, 180.0, -90.0, 90.0]
+stac_collection_title = "product|DYAMOND (HEALPix)"
+stac_collection_description = "product|Output from the DYAMOND (DYnamics of the Atmospheric general circulation Modeled On Non-hydrostatic Domains) global storm-resolving model intercomparison, remapped to HEALPix and served as Zarr. This collection includes ICON-SAP-5km, SCREAM-3km and UM-5km atmospheric output from DYAMOND Winter."
+stac_collection_documentation_url = "product|https://easy.gems.dkrz.de/DYAMOND/index.html"
+stac_collection_keywords = "product|global storm-resolving"
+stac_collection_thumbnail_url = "product|https://mpimet.mpg.de/fileadmin/_processed_/9/f/csm_icon_nicam_arpege_fv3_54ff6e9007.jpg"
+stac_collection_thumbnail_type = "product|image/jpeg"
+
+[drs_settings.dialect.waterpark-dyamond-scream]
+sources = ["path", "data"]
+
+[drs_settings.dialect.waterpark-dyamond-scream.path_specs]
+dir_parts = []
+file_parts = ["_", "level_type"]
+
+[drs_settings.dialect.waterpark-dyamond-scream.data_specs]
+read_kws = { consolidated = true, decode_times = false, decode_coords = true, create_default_indexes = false }
+
+[drs_settings.dialect.waterpark-dyamond-scream.data_specs.globals]
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+time_start_raw = "time_coverage_start"
+time_end_raw = "time_coverage_end"
+
+[drs_settings.dialect.waterpark-dyamond-scream.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"
+
+[drs_settings.dialect.waterpark-dyamond-scream.special.time]
+type = "call"
+call = '''
+(lambda start, end: [start.strip().replace(" ", "T", 1), end.strip().replace(" ", "T", 1)] if start and end else None)(
+    {{ time_start_raw | default("", true) | tojson }},
+    {{ time_end_raw | default("", true) | tojson }}
+)
+'''
+
+[drs_settings.dialect.waterpark-dyamond-scream.special.time_frequency]
+type = "call"
+call = '''
+(lambda value: {
+    "PT15M": "15min", "PT30M": "30min",
+    "PT1H": "1hr", "PT3H": "3hr", "PT6H": "6hr",
+    "P1D": "day", "P1M": "mon", "P1Y": "yr",
+}.get(value.upper(), value.lower()))(
+    {{ file | tojson }}.rstrip("/").rsplit("/", 2)[-2]
+)
+'''
+
+[waterpark-dyamond-um]
+fs_type = "s3"
+root_path = "s3://dyamond/healpix/dyamond-winter/um-5km/"
+drs_format = "waterpark-dyamond-um"
+glob_pattern = "level_[0-9].zarr|level_[0-9][0-9].zarr"
+
+[waterpark-dyamond-um.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+
+[waterpark-dyamond-um.defaults]
+project = "waterpark"
+product = "dyamond"
+experiment = "dyamond-winter"
+model = "um-5km"
+institute = "mohc"
+realm = "atmosphere"
+bbox = [-180.0, 180.0, -90.0, 90.0]
+stac_collection_title = "product|DYAMOND (HEALPix)"
+stac_collection_description = "product|Output from the DYAMOND (DYnamics of the Atmospheric general circulation Modeled On Non-hydrostatic Domains) global storm-resolving model intercomparison, remapped to HEALPix and served as Zarr. This collection includes ICON-SAP-5km, SCREAM-3km and UM-5km atmospheric output from DYAMOND Winter."
+stac_collection_documentation_url = "product|https://easy.gems.dkrz.de/DYAMOND/index.html"
+stac_collection_keywords = "product|global storm-resolving"
+stac_collection_thumbnail_url = "product|https://mpimet.mpg.de/fileadmin/_processed_/9/f/csm_icon_nicam_arpege_fv3_54ff6e9007.jpg"
+stac_collection_thumbnail_type = "product|image/jpeg"
+
+[drs_settings.dialect.waterpark-dyamond-um]
+sources = ["path", "data"]
+
+[drs_settings.dialect.waterpark-dyamond-um.path_specs]
+dir_parts = []
+file_parts = ["_", "level_type"]
+
+[drs_settings.dialect.waterpark-dyamond-um.data_specs]
+read_kws = { consolidated = true, decode_times = true, decode_coords = true, create_default_indexes = false }
+
+[drs_settings.dialect.waterpark-dyamond-um.data_specs.globals]
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+
+[drs_settings.dialect.waterpark-dyamond-um.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"
+
+[drs_settings.dialect.waterpark-dyamond-um.data_specs.stats.time]
+stat = "range"
+coords = "time"
+
+[drs_settings.dialect.waterpark-dyamond-um.special.time_frequency]
+type = "call"
+call = '''
+(lambda value: {
+    "PT15M": "15min", "PT30M": "30min",
+    "PT1H": "1hr", "PT3H": "3hr", "PT6H": "6hr",
+    "P1D": "day", "P1M": "mon", "P1Y": "yr",
+}.get(value.upper(), value.lower()))(
+    {{ file | tojson }}.rstrip("/").rsplit("/", 2)[-2]
+)
+'''

@@ -1,0 +1,15 @@
+[Unit]
+Description=Report the Waterpark catalogue state
+
+# Reporting must not depend on a command failing. If publication quietly stops,
+# nothing fails - the datasets just get older - so the age thresholds need a
+# schedule of their own.
+
+[Timer]
+OnCalendar=*-*-* 00/6:00:00
+RandomizedDelaySec=15min
+Persistent=true
+Unit=waterpark-catalogue-notify.service
+
+[Install]
+WantedBy=timers.target
