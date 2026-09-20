@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
@@ -48,7 +48,7 @@ jobs:
     outputs:
       datasets: ${{ steps.matrix.outputs.datasets }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -205,7 +205,7 @@ jobs:
           --health-retries 12
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v7
         with:
@@ -384,7 +384,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
@@ -609,7 +609,7 @@ jobs:
           private-key: ${{ secrets.FREVA_BOT_PRIVATE_KEY }}
           permission-issues: write
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Reconcile one issue per dataset
         shell: python

@@ -40,7 +40,7 @@ jobs:
       # those two pages, so skip them and keep this job fast and stable.
       SKIP_ASSET_BUILD: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Start the stack
         # No configuration step: with dev/secrets empty the API mails the
