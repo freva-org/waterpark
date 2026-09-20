@@ -100,7 +100,7 @@ jobs:
             ${{ inputs.only && format('--only {0}', inputs.only) || '' }}
 
       - name: Open a pull request with the refreshed figures
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: examples/refresh
