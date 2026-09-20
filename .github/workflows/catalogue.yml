@@ -360,7 +360,7 @@ jobs:
           done
           echo "$DATASET: the dump and the records hold the same keys"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: catalogue-part-${{ matrix.dataset }}
           path: out/
@@ -580,7 +580,7 @@ jobs:
                 f"({carried} carried, {kept_newer} kept from a later release), "
                 f"{sum(d['records'] for d in datasets.values())} records")
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: catalogue
           path: bundle/
@@ -588,7 +588,7 @@ jobs:
           overwrite: true
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: catalogue-manifest
           path: bundle/manifest.json
