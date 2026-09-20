@@ -16,6 +16,7 @@ STATE_DIR=${CATALOGUE_STATE:-$HOME_DIR/lib}
 STATE=$STATE_DIR/state.json
 DUMPS=$STATE_DIR/dumps
 API=https://api.github.com
+TOKEN=""
 CORES=(files latest)
 STATE_VERSION=2
 
@@ -421,8 +422,49 @@ collect_garbage() {
 
 # the source
 
+b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
+
+mint_token() {
+  local now assertion installation response
+  [ -r "$CATALOGUE_APP_KEY" ] || { fail "cannot read $CATALOGUE_APP_KEY"; return 1; }
+  now=$(date -u +%s)
+  # Nine minutes, backdated one: GitHub rejects more than ten, and clocks drift.
+  assertion=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url).$(
+    printf '{"iat":%s,"exp":%s,"iss":"%s"}' "$((now - 60))" "$((now + 480))" \
+      "$CATALOGUE_APP_ID" | b64url)
+  assertion=$assertion.$(printf '%s' "$assertion" |
+    openssl dgst -sha256 -sign "$CATALOGUE_APP_KEY" -binary | b64url) || return 1
+
+  installation=${CATALOGUE_APP_INSTALLATION:-}
+  if [ -z "$installation" ]; then
+    # One less thing to configure: the app knows where it is installed.
+    installation=$(curl -fsS --max-time 30 -H "Authorization: Bearer $assertion" \
+      -H 'Accept: application/vnd.github+json' \
+      "$API/repos/$REPOSITORY/installation" | jq -r '.id // empty') || return 1
+    [ -n "$installation" ] ||
+      { fail "$REPOSITORY has no installation of app $CATALOGUE_APP_ID"; return 1; }
+  fi
+  response=$(curl -fsS --max-time 30 -X POST \
+    -H "Authorization: Bearer $assertion" \
+    -H 'Accept: application/vnd.github+json' \
+    -H 'X-GitHub-Api-Version: 2022-11-28' \
+    "$API/app/installations/$installation/access_tokens") || return 1
+  jq -r '.token // empty' <<<"$response"
+}
+
+access_token() {
+  if [ -n "${CATALOGUE_GITHUB_TOKEN:-}" ]; then
+    printf '%s' "$CATALOGUE_GITHUB_TOKEN"
+    return 0
+  fi
+  [ -n "${CATALOGUE_APP_ID:-}" ] && [ -n "${CATALOGUE_APP_KEY:-}" ] || return 1
+  local minted
+  minted=$(mint_token) && [ -n "$minted" ] || return 1
+  printf '%s' "$minted"
+}
+
 github() {
-  curl -fsS --max-time 30 -H "Authorization: Bearer $CATALOGUE_GITHUB_TOKEN" \
+  curl -fsS --max-time 30 -H "Authorization: Bearer $TOKEN" \
     -H 'Accept: application/vnd.github+json' \
     -H 'X-GitHub-Api-Version: 2022-11-28' "$API$1"
 }
@@ -453,7 +495,7 @@ newest_bundle() {
 }
 
 fetch() {
-  curl -fsSL --max-time 300 -H "Authorization: Bearer $CATALOGUE_GITHUB_TOKEN" "$1" -o "$2"
+  curl -fsSL --max-time 300 -H "Authorization: Bearer $TOKEN" "$1" -o "$2"
 }
 
 
@@ -504,8 +546,9 @@ refresh() {
   local bundle run artifact url work manifest configured published
   local name entry parts part digest records floor previous prior_run reason accepted rejected stalled
 
-  [ -n "${CATALOGUE_GITHUB_TOKEN:-}" ] ||
-    { warn "CATALOGUE_GITHUB_TOKEN is unset ($CONFIG's env file)"; return 1; }
+  TOKEN=$(access_token) ||
+    { warn "no GitHub credential: set CATALOGUE_GITHUB_TOKEN, or CATALOGUE_APP_ID \
+and CATALOGUE_APP_KEY, in the env file next to $CONFIG"; return 1; }
 
   bundle=$(newest_bundle) || {
     case $? in
@@ -852,6 +895,8 @@ DATABASE=${CATALOGUE_POSTGRES:-}
 for tool in curl jq unzip flock awk grep sed sha256sum gunzip date timeout mktemp; do
   command -v "$tool" >/dev/null || die "$tool is not installed"
 done
+[ -z "${CATALOGUE_APP_ID:-}" ] || command -v openssl >/dev/null ||
+  die "CATALOGUE_APP_ID is set but openssl is not installed"
 [ -z "$DATABASE" ] || command -v psql >/dev/null ||
   die "CATALOGUE_POSTGRES is set but psql is not installed"
 
