@@ -41,7 +41,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # `mkdocs gh-deploy` needs real history, not a depth-1 clone.
           fetch-depth: 0
