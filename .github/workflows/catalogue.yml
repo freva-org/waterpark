@@ -1,0 +1,741 @@
+name: Catalogue
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "catalogue/**"
+      - ".github/workflows/catalogue.yml"
+  pull_request:
+    paths:
+      - "catalogue/**"
+      - "landingpage/assets/stac-browser.config.js"
+      - ".github/workflows/catalogue.yml"
+
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # a one-dataset push must not cancel the daily
+  # snapshot that the ingest host depends on.
+  group: catalogue-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  # Runs on every catalogue change and fails in
+  # seconds rather than after a 90-minute crawl.
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate the configuration
+        run: ./catalogue/bin/waterpark-validate
+
+  changes:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      datasets: ${{ steps.matrix.outputs.datasets }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select datasets
+        id: matrix
+        shell: python
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          import hashlib
+          import io
+          import json
+          import os
+          import subprocess
+          import tomllib
+          import zipfile
+          from pathlib import Path, PurePosixPath
+
+          # A file may define several datasets, and the name it gives them is
+          # what everything downstream is keyed on, not the filename.
+          defined = {}
+          for path in sorted(Path("catalogue/datasets").glob("*.toml")):
+              for name in tomllib.loads(path.read_text()):
+                  if name != "drs_settings":
+                      defined[name] = path.name
+          all_datasets = sorted(defined)
+          event = os.environ["EVENT_NAME"]
+          base = os.environ.get("BASE_SHA", "")
+          head = os.environ["HEAD_SHA"]
+          run_all = event in ("workflow_dispatch", "schedule") or not base \
+              or set(base) == {"0"}
+
+          if not run_all:
+              exists = subprocess.run(
+                  ["git", "cat-file", "-e", f"{base}^{{commit}}"],
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL,
+                  check=False,
+              )
+              run_all = exists.returncode != 0
+
+          changed = []
+          if not run_all:
+              changed = subprocess.check_output(
+                  ["git", "diff", "--name-only", base, head], text=True
+              ).splitlines()
+
+          # Only these affect every dataset
+          crawl_all = {
+              "catalogue/schema.toml",
+              "catalogue/requirements.txt",
+              ".github/workflows/catalogue.yml",
+          }
+
+          selected = set()
+          for name in changed:
+              path = PurePosixPath(name)
+              if path.match("catalogue/datasets/*.toml"):
+                  if Path(name).is_file():
+                      selected |= {d for d, f in defined.items() if f == path.name}
+                  else:
+                      run_all = True          # a deletion changes the whole set
+              elif name in crawl_all:
+                  run_all = True
+
+          # The published configuration, not the commit range, decides what is
+          # out of date
+          def config_digest(name):                # must match the bundle job
+              parts = [Path("catalogue/schema.toml"),
+                       Path("catalogue/requirements.txt"),
+                       Path("catalogue/datasets") / defined[name]]
+              return hashlib.sha256(
+                  b"".join(p.read_bytes() for p in parts if p.is_file())).hexdigest()
+
+          def published_configs():
+              repo = os.environ.get("GH_REPO", "")
+              try:
+                  ids = subprocess.check_output(
+                      ["gh", "api",
+                       f"repos/{repo}/actions/artifacts"
+                       "?name=catalogue-manifest&per_page=20",
+                       "--jq", '.artifacts[] | select(.expired == false)'
+                               ' | select(.workflow_run.head_branch == "main") | .id'],
+                      text=True).split()
+                  if not ids:
+                      return {}
+                  raw = subprocess.check_output(
+                      ["gh", "api", f"repos/{repo}/actions/artifacts/{ids[0]}/zip"])
+                  with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                      published = json.loads(archive.read("manifest.json"))
+              except Exception as error:      # never block a crawl on this
+                  print(f"no published manifest to compare against ({error})")
+                  return {}
+              return {name: entry.get("config")
+                      for name, entry in published.get("datasets", {}).items()}
+
+          if not run_all:
+              published = published_configs()
+              if published:
+                  selected |= {name for name in all_datasets
+                               if published.get(name) != config_digest(name)}
+
+          result = [{"dataset": name, "file": defined[name]}
+                    for name in (all_datasets if run_all else sorted(selected))]
+          encoded = json.dumps(result, separators=(",", ":"))
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              output.write(f"datasets={encoded}\n")
+          print(f"Selected: {encoded}")
+
+  crawl:
+    needs: changes
+    if: needs.changes.outputs.datasets != '[]'
+    runs-on: ubuntu-latest
+    # Two crawls per dataset: one into the store Solr is indexed from, one into
+    # the database the dump comes from.
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        # One entry per dataset, carrying the file that defines it: several
+        # datasets can share a file, and the name is not the filename.
+        include: ${{ fromJSON(needs.changes.outputs.datasets) }}
+
+    services:
+      # The dump the ingest host loads is made here, by the crawler itself
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: waterpark
+          POSTGRES_DB: waterpark
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+      solr:
+        image: ghcr.io/freva-org/freva-solr:10.0.0
+        env:
+          API_SOLR_HEAP: 1g
+        ports:
+          - 8983:8983
+        options: >-
+          --health-cmd "curl --fail --silent http://localhost:8983/solr/admin/info/system"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: catalogue/requirements.txt
+
+      - name: Install metadata-crawler
+        run: python -m pip install -r catalogue/requirements.txt
+
+      - name: Crawl public S3 dataset
+        env:
+          DATASET: ${{ matrix.dataset }}
+          CONFIG: ${{ matrix.file }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          # Without an explicit prefix every dataset writes metadata-*.json.gz,
+          # and merging the artifacts would collapse them onto each other.
+          metadata-crawler add "out/$DATASET.yml" \
+            --config-file catalogue/schema.toml \
+            --config-file "catalogue/datasets/$CONFIG" \
+            --data-set "$DATASET" \
+            --data-store-prefix "$PWD/out/$DATASET" \
+            --batch-size 500 \
+            --scan-concurrency 64 \
+            --n-procs 2 \
+            --fail-under 1
+          # Stamped here, not in the bundle job: a matrix that runs for an hour
+          # would otherwise make the first dataset look as fresh as the last.
+          date -u +%Y-%m-%dT%H:%M:%S+00:00 > "out/$DATASET.crawled"
+
+      # Production indexes without --rotate, so that is the path this must
+      # exercise. Rotation is covered separately below.
+      - name: Index the way production does
+        env:
+          DATASET: ${{ matrix.dataset }}
+        run: |
+          set -euo pipefail
+          metadata-crawler solr index "out/$DATASET.yml" \
+            --server localhost:8983 \
+            --batch-size 500 \
+            --http-workers 2 \
+            --max-failed-batches 0
+
+          # The crawler emits `dataset`; --data-set only selects what to crawl.
+          count="$(
+            curl --fail --silent \
+              "http://localhost:8983/solr/files/select?q=dataset:$DATASET&rows=0&wt=json" |
+              python -c 'import json,sys; print(json.load(sys.stdin)["response"]["numFound"])'
+          )"
+          echo "$DATASET: $count document(s)"
+          test "$count" -ge 1
+
+      # The host removes records a new generation no longer has by posting
+      # their unique key.
+      - name: Prove a record can be taken back out again
+        env:
+          DATASET: ${{ matrix.dataset }}
+        run: |
+          set -euo pipefail
+          solr() { curl --fail --silent "http://localhost:8983/solr/$1"; }
+          count() { solr "files/select?q=dataset:$DATASET&rows=0&wt=json" |
+                      python -c 'import json,sys; print(json.load(sys.stdin)["response"]["numFound"])'; }
+
+          victim="$(python -c 'import gzip,json,sys; print(json.loads(gzip.open(sys.argv[1]).readline())["file"])' \
+                      "out/$DATASET-files.json.gz")"
+          before="$(count)"
+          curl --fail --silent "http://localhost:8983/solr/files/update?commit=true" \
+            -H 'Content-Type: application/json' \
+            -d "$(python -c 'import json,sys; print(json.dumps({"delete": [sys.argv[1]]}))' "$victim")" \
+            -o /dev/null
+          after="$(count)"
+          echo "$DATASET: $before -> $after after removing one record by id"
+          test "$after" -eq "$((before - 1))"
+
+      - name: Test rotation as well
+        env:
+          DATASET: ${{ matrix.dataset }}
+        run: |
+          set -euo pipefail
+          metadata-crawler solr index "out/$DATASET.yml" \
+            --server localhost:8983 \
+            --batch-size 500 \
+            --http-workers 2 \
+            --rotate \
+            --configset freva \
+            --min-docs 1 \
+            --max-failed-batches 0
+
+          for core in latest files; do
+            count="$(
+              curl --fail --silent \
+                "http://localhost:8983/solr/$core/select?q=*:*&rows=0&wt=json" |
+                python -c 'import json,sys; print(json.load(sys.stdin)["response"]["numFound"])'
+            )"
+            test "$count" -ge 1
+          done
+
+      - name: Crawl into PostgreSQL and dump it
+        env:
+          DATASET: ${{ matrix.dataset }}
+          CONFIG: ${{ matrix.file }}
+          PGHOST: localhost
+          PGUSER: postgres
+          PGPASSWORD: waterpark
+        run: |
+          set -euo pipefail
+          schema="${DATASET//-/_}"
+          metadata-crawler add "postgresql://postgres:waterpark@localhost:5432/waterpark" \
+            --config-file catalogue/schema.toml \
+            --config-file "catalogue/datasets/$CONFIG" \
+            --data-set "$DATASET" \
+            --storage-option db_schema "$schema" \
+            --batch-size 500 \
+            --scan-concurrency 64 \
+            --n-procs 2 \
+            --fail-under 1
+          pg_dump -d waterpark --schema="$schema" --no-owner --no-privileges |
+            gzip -9 > "out/$DATASET.sql.gz"
+
+      - name: Load the dump the way the host will
+        env:
+          DATASET: ${{ matrix.dataset }}
+          PGHOST: localhost
+          PGUSER: postgres
+          PGPASSWORD: waterpark
+        run: |
+          set -euo pipefail
+          schema="${DATASET//-/_}"
+          createdb host_copy
+          for attempt in 1 2; do
+            { printf 'DROP SCHEMA IF EXISTS "%s" CASCADE;\n' "$schema"
+              gunzip -c "out/$DATASET.sql.gz"; } |
+              psql -d host_copy -v ON_ERROR_STOP=1 -q -o /dev/null --single-transaction
+          done
+          # The dump comes from its own crawl, so "it loads" says nothing about
+          # it holding the same records.
+          for table in files latest; do
+            rows="$(psql -Atq -d host_copy -c "SELECT count(*) FROM \"$schema\".$table")"
+            lines="$(gunzip -c "out/$DATASET-$table.json.gz" | wc -l)"
+            echo "$DATASET.$table: $rows row(s), $lines record(s)"
+            test "$rows" -eq "$lines"
+            test "$rows" -ge 1
+            # Byte order on both sides
+            sql_keys="$(psql -Atq -d host_copy \
+              -c "SELECT md5(string_agg(file, E'\n' ORDER BY file COLLATE \"C\")) FROM \"$schema\".$table")"
+
+            gunzip -c "out/$DATASET-$table.json.gz" | jq -r '.file' | LC_ALL=C sort > keys.txt
+            record_keys="$(printf '%s' "$(cat keys.txt)" | md5sum | cut -d' ' -f1)"
+            test "$sql_keys" = "$record_keys"
+          done
+          echo "$DATASET: the dump and the records hold the same keys"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: catalogue-part-${{ matrix.dataset }}
+          path: out/
+          retention-days: 7
+          if-no-files-found: error
+
+  # Gather every dataset that crawled into one artifact with a manifest.
+  bundle:
+    needs: [changes, crawl]
+    if: >-
+      always() && github.ref == 'refs/heads/main'
+      && needs.changes.result == 'success'
+      && needs.changes.outputs.datasets != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # One publisher at a time, queued rather than cancelled
+    concurrency:
+      group: catalogue-publish
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --quiet pyyaml
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: catalogue-part-*
+          merge-multiple: true
+          path: bundle
+
+      - name: Fetch the previous snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p bundle
+          id="$(gh api "repos/$GH_REPO/actions/artifacts?name=catalogue&per_page=50" \
+                 --jq 'first(.artifacts[]
+                       | select(.expired == false)
+                       | select(.workflow_run.head_branch == "main")
+                       | .id) // empty')"
+          if [ -z "$id" ]; then
+            echo "no previous snapshot; this one stands alone"
+            exit 0
+          fi
+          gh api "repos/$GH_REPO/actions/artifacts/$id/zip" > previous.zip
+          mkdir -p previous && unzip -q previous.zip -d previous
+
+      - name: Compose the snapshot
+        shell: python
+        env:
+          REVISION: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          import gzip, hashlib, json, os, re, shutil, tomllib, yaml
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          bundle, previous = Path("bundle"), Path("previous")
+          # The dataset name, not the filename: one file may define several.
+          defined = {}
+          for path in sorted(Path("catalogue/datasets").glob("*.toml")):
+              for name in tomllib.loads(path.read_text()):
+                  if name != "drs_settings":
+                      defined[name] = path.name
+          configured = sorted(defined)
+          crawled_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+          before = {}
+          if (previous / "manifest.json").is_file():
+              before = json.loads(
+                  (previous / "manifest.json").read_text()).get("datasets", {})
+
+          VOLATILE = {"timestamp", "urlpath", "prefix", "description"}
+
+          def interpretation(catalogue):
+              """
+              Everything in the catalogue that changes how records are read.
+              """
+              def strip(node):
+                  if isinstance(node, dict):
+                      return {key: strip(value) for key, value in node.items()
+                              if key not in VOLATILE}
+                  if isinstance(node, list):
+                      return [strip(value) for value in node]
+                  return node
+              return json.dumps(strip(yaml.safe_load(catalogue.read_text())),
+                                sort_keys=True, default=str)
+
+          def config_digest(name):                # must match the changes job
+              parts = [Path("catalogue/schema.toml"),
+                       Path("catalogue/requirements.txt"),
+                       Path("catalogue/datasets") / defined[name]]
+              return hashlib.sha256(
+                  b"".join(p.read_bytes() for p in parts if p.is_file())).hexdigest()
+
+          REQUIRED = ("catalogue", "sql", "files", "sha256", "records", "counts",
+                      "sidecars", "digest", "crawled_at", "config")
+
+          def usable(entry):
+              """
+              Does an entry from an older snapshot meet the current contract?
+              """
+              return (bool(entry)
+                      and all(entry.get(key) is not None for key in REQUIRED)
+                      and isinstance(entry.get("counts"), dict)
+                      and all(isinstance(entry["counts"].get(core), int)
+                              and entry["counts"][core] >= 1
+                              for core in ("files", "latest")))
+
+          def describe(catalogue):
+              """
+              Checksums, record count, and a digest of the records themselves.
+              """
+              text = catalogue.read_text()
+              wanted = {catalogue.parent / Path(u.strip().strip("\"'")).name
+                        for u in re.findall(r"urlpath:[ \t]*(.+)", text)}
+              wanted |= {catalogue.parent
+                         / f"{Path(p.strip().strip(chr(34) + chr(39))).name}-{core}.json.gz"
+                         for p in re.findall(r"^\s*prefix:[ \t]*(.+)$", text, re.M)
+                         for core in ("latest", "files")}
+              wanted |= {catalogue.with_suffix(".sql.gz")}
+              absent = sorted(p.name for p in wanted if not p.is_file())
+              if absent:
+                  raise SystemExit(f"{catalogue.stem}: crawl output is missing {absent}")
+              parts = [catalogue] + sorted(wanted)
+              records, counts, cores, sidecars = 0, {}, {}, {}
+              for part in parts:
+                  if not part.name.endswith(".json.gz"):
+                      continue
+                  core = next((c for c in ("files", "latest")
+                               if part.name.endswith(f"-{c}.json.gz")), part.name)
+                  marks = []
+                  with gzip.open(part, "rb") as stream:
+                      for line in stream:
+                          marks.append(hashlib.sha256(line).digest())
+                  marks.sort()
+                  cores[core] = hashlib.sha256(b"".join(marks)).hexdigest()
+                  counts[core] = len(marks)
+                  sidecars[core] = part.name
+                  records = max(records, len(marks))
+              identity = hashlib.sha256(json.dumps(
+                  {"cores": cores, "counts": counts,
+                   "interpretation": interpretation(catalogue)},
+                  sort_keys=True).encode()).hexdigest()
+              return {
+                  "catalogue": catalogue.name,
+                  "sql": catalogue.with_suffix(".sql.gz").name,
+                  "files": [p.name for p in parts],
+                  "sha256": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                             for p in parts},
+                  "records": records,
+                  "counts": counts,
+                  "cores": cores,
+                  # Which file holds which core: the host needs it to work out
+                  # what a new generation no longer has.
+                  "sidecars": sidecars,
+                  "digest": identity,
+              }
+
+          def carry(name, kept, current=True):
+              """
+              Republish a previous snapshot's copy, with its own crawl facts.
+              """
+              parts = [previous / part for part in kept.get("files", [])]
+              if not usable(kept) or not all(p.is_file() for p in parts):
+                  return None
+              for part in parts:
+                  shutil.copy2(part, bundle / part.name)
+              stale = current and kept.get("config") != config_digest(name)
+              return kept | {"outcome": "carried (older configuration)" if stale
+                             else "carried"}
+
+          datasets, carried, kept_newer = {}, 0, 0
+          for name in configured:
+              fresh = bundle / (name + ".yml")
+              stamp = bundle / (name + ".crawled")
+              kept = before.get(name) or {}
+              if fresh.is_file():
+                  entry = describe(fresh)
+                  config = config_digest(name)
+                  when = (stamp.read_text().strip() if stamp.is_file() else crawled_at)
+                  superseded = int(kept.get("crawled_run") or 0) > int(os.environ["RUN_ID"])
+                  if superseded and (settled := carry(name, kept, current=False)):
+                      datasets[name] = settled
+                      kept_newer += 1
+                      continue
+                  entry.update(config=config, crawled_at=when,
+                               crawled_run=os.environ["RUN_ID"],
+                               crawled_revision=os.environ["REVISION"],
+                               outcome="crawled")
+                  datasets[name] = entry
+                  continue
+              if settled := carry(name, kept):
+                  datasets[name] = settled
+                  carried += 1
+
+
+          for stamp in bundle.glob("*.crawled"):
+              stamp.unlink()
+
+          crawler = ""
+          pin = Path("catalogue/requirements.txt")
+          if pin.is_file():
+              found = re.search(r"metadata-crawler==([^\s#]+)", pin.read_text())
+              crawler = found.group(1) if found else ""
+
+          manifest = {"version": 2, "run": os.environ["RUN_ID"],
+                      "revision": os.environ["REVISION"], "crawler": crawler,
+                      "configured": configured, "datasets": datasets}
+          (bundle / "manifest.json").write_text(json.dumps(manifest, indent=1))
+          print(f"{len(datasets)} of {len(configured)} configured datasets "
+                f"({carried} carried, {kept_newer} kept from a later release), "
+                f"{sum(d['records'] for d in datasets.values())} records")
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: catalogue
+          path: bundle/
+          retention-days: 30
+          overwrite: true
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: catalogue-manifest
+          path: bundle/manifest.json
+          retention-days: 30
+          overwrite: true
+          if-no-files-found: error
+
+  triage:
+    needs: [changes, crawl]
+    if: always() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: bot
+        with:
+          client-id: ${{ vars.FREVA_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.FREVA_BOT_PRIVATE_KEY }}
+          permission-issues: write
+
+      - name: Reconcile one issue per dataset
+        shell: python
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          DATASETS: ${{ needs.changes.outputs.datasets }}
+        run: |
+          import json, os, re, subprocess
+          from datetime import date
+
+          def gh(*args, check=True):
+              done = subprocess.run(["gh", *args], text=True, capture_output=True)
+              if done.returncode and check:
+                  raise SystemExit(f"gh {' '.join(args)}: {done.stderr.strip()}")
+              return done.stdout
+
+          repo, run_url = os.environ["GH_REPO"], os.environ["RUN_URL"]
+
+          raw_datasets = os.environ.get("DATASETS", "").strip()
+          if not raw_datasets:
+              raise SystemExit(0)
+          datasets = json.loads(raw_datasets)
+
+          gh("label", "create", "catalogue", "--color", "0e8a16",
+             "--description", "Waterpark catalogue", check=False)
+
+          raw = gh("api", f"repos/{repo}/actions/runs/{os.environ['RUN_ID']}/jobs?per_page=100",
+                   "--jq", '.jobs[] | {name, html_url, conclusion,'
+                           ' failed: [.steps[] | select(.conclusion == "failure") | .name]}')
+          jobs = {}
+          for line in raw.splitlines():
+              job = json.loads(line)
+              found = re.fullmatch(r"crawl \((.+)\)", job["name"])
+              if found:
+                  jobs[found.group(1)] = job
+
+          prefix = "catalogue: "
+          open_issues = {
+              issue["title"]: issue
+              for issue in json.loads(gh("issue", "list", "--label", "catalogue",
+                                         "--state", "open", "--limit", "100",
+                                         "--json", "number,title,body"))
+              if issue["title"].startswith(prefix)
+          }
+
+          def close(issue, why):
+              gh("issue", "comment", str(issue["number"]), "--body", why)
+              gh("issue", "close", str(issue["number"]))
+
+          failed_states = ("failure", "timed_out")
+          verdicts = [d for d in datasets
+                      if (jobs.get(d) or {}).get("conclusion")
+                      in ("success",) + failed_states]
+          failures = [d for d in verdicts
+                      if jobs[d]["conclusion"] in failed_states]
+
+          outage_title = f"{prefix}the daily crawl is failing for most datasets"
+          outage = open_issues.pop(outage_title, None)
+
+          if verdicts and len(failures) > len(verdicts) / 2:
+              body = (f"{len(failures)} of {len(verdicts)} datasets failed the daily "
+                      f"crawl, so this is being treated as an outage of the object "
+                      f"store or the network rather than {len(failures)} broken "
+                      f"configurations.\n\n"
+                      f"Last seen: {date.today()} in [this run]({run_url})\n\n"
+                      f"No per-dataset issues were opened or closed. This closes "
+                      f"itself when a daily crawl gets through again.")
+              if outage:
+                  gh("issue", "edit", str(outage["number"]), "--body", body)
+                  print(f"outage continues ({len(failures)}/{len(verdicts)}), "
+                        f"issue #{outage['number']}")
+              else:
+                  gh("issue", "create", "--title", outage_title, "--body", body,
+                     "--label", "catalogue", "--label", "automated")
+                  print(f"outage: {len(failures)}/{len(verdicts)} failed, opened an issue")
+              raise SystemExit(0)
+
+          if outage and verdicts:
+              close(outage, f"Recovered: {len(verdicts) - len(failures)} of "
+                            f"{len(verdicts)} datasets crawled in {run_url}.")
+              print(f"outage over, closed #{outage['number']}")
+
+          for dataset in datasets:
+              job = jobs.get(dataset)
+              title = f"{prefix}{dataset} is failing the daily crawl"
+              issue = open_issues.pop(title, None)
+              outcome = job["conclusion"] if job else None
+
+              if outcome == "success":
+                  if issue:
+                      close(issue, f"Recovered: the daily crawl of `{dataset}` "
+                                   f"passed in {run_url}.")
+                      print(f"{dataset}: recovered, closed #{issue['number']}")
+                  continue
+              if outcome not in failed_states:
+                  print(f"{dataset}: no verdict ({outcome}), leaving it alone")
+                  continue
+
+              step = (job["failed"] or ["the job itself"])[0]
+              body = (f"The daily crawl of `{dataset}` is failing.\n\n"
+                      f"Failing step: **{step}**\n"
+                      f"Last seen: {date.today()} in [this run]({job['html_url']})\n\n"
+                      f"This issue is maintained automatically. It stays open while the\n"
+                      f"dataset keeps failing, gets a comment when the failure changes, and\n"
+                      f"closes itself when a daily crawl passes.\n\n"
+                      f"<!-- signature: {step} -->")
+
+              if not issue:
+                  gh("issue", "create", "--title", title, "--body", body,
+                     "--label", "catalogue", "--label", "automated")
+                  print(f"{dataset}: opened an issue ({step})")
+                  continue
+
+              was = re.search(r"<!-- signature: (.*?) -->", issue["body"] or "")
+              if not was or was.group(1) != step:
+                  gh("issue", "comment", str(issue["number"]), "--body",
+                     f"The failure changed: now failing at **{step}** in "
+                     f"[this run]({job['html_url']}).")
+                  print(f"{dataset}: failure changed to {step}")
+              else:
+                  print(f"{dataset}: still failing at {step}, issue #{issue['number']}")
+              # Refreshing the body keeps "last seen" current and notifies nobody.
+              gh("issue", "edit", str(issue["number"]), "--body", body)
+
+          # Whatever is left was never visited: the dataset is gone from the repo.
+          for title, issue in open_issues.items():
+              close(issue, "Closing: this dataset is no longer configured in "
+                           "`catalogue/datasets/`.")
+              print(f"closed orphan #{issue['number']} ({title})")

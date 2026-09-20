@@ -1,0 +1,69 @@
+# ============================================================================
+# ICDC / MODIS AQUA
+# s3://icdc/healpix/ocean/MODIS/aqua/*/level_*.zarr/
+# example: s3://icdc/healpix/ocean/MODIS/aqua/P1D/level_9.zarr/
+# ============================================================================
+
+[waterpark-icdc-modis-ocean]
+fs_type = "s3"
+root_path = "s3://icdc/healpix/ocean/MODIS/aqua/"
+drs_format = "waterpark-icdc-modis-ocean"
+glob_pattern = "level_[0-9].zarr|level_[0-9][0-9].zarr"
+
+[waterpark-icdc-modis-ocean.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+
+[waterpark-icdc-modis-ocean.defaults]
+project = "waterpark"
+product = "icdc"
+realm = "ocean"
+experiment = "modis-sst"
+model = "aqua-modis"
+institute = "nasa-gsfc"
+stac_collection_title = "product|ICDC Satellite Observations (HEALPix)"
+stac_collection_description = "product|Satellite remote-sensing climate products curated by the Integrated Climate Data Center (ICDC), University of Hamburg (CERES radiation, GPM/IMERG precipitation, MODIS, ORAS5), remapped to HEALPix and served as Zarr. The thumbnail image comes from https://www.nature.com/articles/s41467-021-23321-7"
+stac_collection_documentation_url = "product|https://www.cen.uni-hamburg.de/en/icdc.html"
+stac_collection_keywords = "product|remote sensing"
+stac_collection_thumbnail_url = "product|https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-021-23321-7/MediaObjects/41467_2021_23321_Fig2_HTML.png?as=webp"
+
+[drs_settings.dialect.waterpark-icdc-modis-ocean]
+sources = ["path", "data"]
+
+[drs_settings.dialect.waterpark-icdc-modis-ocean.path_specs]
+dir_parts = []
+file_parts = ["_", "level_type"]
+
+[drs_settings.dialect.waterpark-icdc-modis-ocean.data_specs]
+read_kws = { consolidated = true, decode_times = true, decode_coords = true, create_default_indexes = false }
+
+[drs_settings.dialect.waterpark-icdc-modis-ocean.data_specs.globals]
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+time_frequency_raw = "time_coverage_resolution"
+
+[drs_settings.dialect.waterpark-icdc-modis-ocean.data_specs.var_attrs.variable]
+var = "sst_*"
+attr = "short_name"
+default = "__name__"
+
+[drs_settings.dialect.waterpark-icdc-modis-ocean.data_specs.stats.time]
+stat = "range"
+coords = "time"
+
+[drs_settings.dialect.waterpark-icdc-modis-ocean.special.time_frequency]
+type = "call"
+call = '''
+(lambda value: {
+    "PT15M": "15min",
+    "PT30M": "30min",
+    "PT1H":  "1hr",
+    "PT3H":  "3hr",
+    "PT6H":  "6hr",
+    "P1D":   "day",
+    "P1M":   "mon",
+    "P1Y":   "yr",
+}.get(value.strip().upper(), value.strip().lower() or "unknown"))(
+    {{ time_frequency_raw | default("", true) | tojson }}
+)
+'''

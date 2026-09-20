@@ -1,0 +1,15 @@
+[Unit]
+Description=Pull the newest Waterpark catalogue and index it
+
+# CI publishes daily and on every merge; checking hourly is one API call and
+# costs nothing when the run has not changed.
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5min
+Persistent=true
+AccuracySec=1min
+Unit=waterpark-catalogue@pull.service
+
+[Install]
+WantedBy=timers.target

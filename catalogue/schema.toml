@@ -1,0 +1,69 @@
+# Shared Waterpark index schema and field rules.
+# Loaded together with exactly one file from datasets/.
+
+[drs_settings.index_schema.file]
+key          = "file"
+type         = "string"
+multi_valued = false
+required     = true
+unique       = true
+
+[drs_settings.index_schema.uri]
+key          = "uri"
+type         = "string"
+multi_valued = false
+required     = true
+
+[drs_settings.special.uri]
+type = "call"
+call = "'{{ uri }}' if '{{ uri }}'.startswith('https://') else 'https://s3.waterpark.dkrz.de/' + '{{ uri }}'.split('://',1)[-1].lstrip('/')"
+
+[drs_settings.special.file]
+type = "call"
+call = "'{{ file }}' if '{{ file }}'.startswith('https://') else 'https://s3.waterpark.dkrz.de/' + '{{ file }}'.split('://',1)[-1].lstrip('/')"
+
+# STAC collection-level fields
+[drs_settings.index_schema.stac_collection_title]
+key = "stac_collection_title"
+type = "string"
+multi_valued = true
+[drs_settings.index_schema.stac_collection_description]
+key = "stac_collection_description"
+type = "string"
+multi_valued = true
+[drs_settings.index_schema.stac_collection_license]
+key = "stac_collection_license"
+type = "string"
+multi_valued = true
+[drs_settings.index_schema.stac_collection_license_url]
+key = "stac_collection_license_url"
+type = "string"
+multi_valued = true
+[drs_settings.index_schema.stac_collection_keywords]
+key = "stac_collection_keywords"
+type = "string"
+multi_valued = true
+[drs_settings.index_schema.stac_collection_thumbnail_url]
+key = "stac_collection_thumbnail_url"
+type = "string"
+multi_valued = true
+[drs_settings.index_schema.stac_collection_thumbnail_type]
+key = "stac_collection_thumbnail_type"
+type = "string"
+multi_valued = true
+[drs_settings.index_schema.stac_collection_documentation_url]
+key = "stac_collection_documentation_url"
+type = "string"
+multi_valued = true
+[drs_settings.index_schema.stac_collection_bbox]
+key = "stac_collection_bbox"
+type = "string"
+multi_valued = true
+[drs_settings.index_schema.stac_collection_time_start]
+key = "stac_collection_time_start"
+type = "string"
+multi_valued = true
+[drs_settings.index_schema.stac_collection_time_end]
+key = "stac_collection_time_end"
+type = "string"
+multi_valued = true

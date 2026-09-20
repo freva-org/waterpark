@@ -1,0 +1,57 @@
+[Unit]
+# One template for every phase: waterpark-catalogue@pull, @index, @check, @report.
+# Four near-identical unit files would drift apart; one cannot.
+Description=Waterpark catalogue: %i
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/opt/waterpark/catalogue.conf
+OnFailure=waterpark-catalogue-notify.service
+
+[Service]
+Type=oneshot
+User=metadata-crawler
+Group=metadata-crawler
+
+# Required, not optional: without the GitHub token nothing can be fetched and
+# every dataset fails in a way that looks like fifteen separate problems.
+EnvironmentFile=/opt/waterpark/catalogue.env
+Environment=PYTHONUNBUFFERED=1
+Environment=NO_COLOR=1
+
+# ProtectSystem=strict makes everything read-only, so this one line is what
+# the service may write - and the only thing removing it has to clean up.
+# State is not StateDirectory=: that would scatter it under /var/lib again.
+ReadWritePaths=/opt/waterpark
+RuntimeDirectory=waterpark-catalogue-%i
+Environment=HOME=%t/waterpark-catalogue-%i
+Environment=MDC_LOG_DIR=/opt/waterpark/log
+UMask=0077
+
+# The command locks its own state, which a wrapper around this line could not
+# do for a hand-run command.
+ExecStart=/usr/local/bin/waterpark-catalogue %i
+
+# Nothing crawls here; a download and an index should never take this long.
+TimeoutStartSec=45min
+
+MemoryMax=4G
+CPUQuota=200%
+IOSchedulingClass=idle
+OOMPolicy=stop
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectProc=invisible
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+LockPersonality=true
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+CapabilityBoundingSet=

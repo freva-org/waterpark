@@ -1,0 +1,195 @@
+# ============================================================================
+# EERIE
+# s3://eerie/eerie-<exp>_<freq>_<agg>_<level>.zarr
+# example: s3://eerie/healpix/future-ssp245-v20240618/ICON/P1M/mean.zarr/
+# s3://eerie/eerie-future-ssp245-v20240618_P1M_mean_*.zarr/
+# example: s3://eerie/eerie-future-ssp245-v20240618_P1M_mean_0.zarr/
+# ============================================================================
+
+[waterpark-eerie-healpix]
+fs_type = "s3"
+root_path = "s3://eerie/healpix/"
+drs_format = "waterpark-eerie-healpix"
+glob_pattern = "mean.zarr"
+
+[waterpark-eerie-healpix.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+
+[waterpark-eerie-healpix.defaults]
+project = "waterpark"
+product = "eerie"
+realm = "atmosphere"
+model = "icon-esm-er"
+institute = "mpi-m"
+ensemble = "r1i1p1f1"
+grid_label = "nested"
+bbox = [-180.0, 180.0, -90.0, 90.0]
+stac_collection_title = "product|EERIE (HEALPix)"
+stac_collection_description = "product|Simulations from the Horizon Europe project EERIE (European Eddy-Rich Earth-System Models), remapped to HEALPix and served as Zarr. These ICON-ESM-ER atmospheric products were produced by the Max Planck Institute for Meteorology."
+stac_collection_documentation_url = "product|https://eerie-project.eu/"
+stac_collection_keywords = "product|eddy-rich"
+stac_collection_thumbnail_url = "product|https://eerie-project.eu/wp-content/uploads/2023/03/Logo-EERIE-white-background.png"
+stac_collection_thumbnail_type = "product|image/png"
+level_type = "9"
+
+[drs_settings.dialect.waterpark-eerie-healpix]
+sources = ["path", "data"]
+
+[drs_settings.dialect.waterpark-eerie-healpix.path_specs]
+dir_parts = ["experiment_raw", "_", "time_frequency_raw"]
+file_parts = ["time_aggregation"]
+
+[drs_settings.dialect.waterpark-eerie-healpix.data_specs]
+read_kws = { consolidated = true, decode_times = true, decode_coords = true, create_default_indexes = false, group = "multiscales/zoom_9" }
+
+[drs_settings.dialect.waterpark-eerie-healpix.data_specs.globals]
+grid_id = "healpix_nside"
+
+[drs_settings.dialect.waterpark-eerie-healpix.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"
+
+[drs_settings.dialect.waterpark-eerie-healpix.data_specs.stats.eerie_time_raw]
+stat = "range"
+coords = "time"
+
+[drs_settings.dialect.waterpark-eerie-healpix.special.time]
+type = "call"
+call = '''
+(lambda pd, values: [
+    pd.Timestamp(values[0]).floor("min").isoformat(),
+    pd.Timestamp(values[-1]).ceil("min").isoformat(),
+] if len(values) == 2 and all(pd.notna(pd.Timestamp(v)) for v in values) else None)(
+    __import__("pandas"),
+    {{ eerie_time_raw | default([], true) | map("string") | list | tojson }}
+)
+'''
+
+[drs_settings.dialect.waterpark-eerie-healpix.special.experiment]
+type = "call"
+call = '''
+(lambda value: {
+    "hist-1950": "hist-1950",
+    "future-ssp245": "highres-future-ssp245",
+}.get(value, value))(
+    {{ experiment_raw | tojson }}.removeprefix("eerie-").rsplit("-v", 1)[0]
+)
+'''
+
+[drs_settings.dialect.waterpark-eerie-healpix.special.version]
+type = "call"
+call = '''
+"v" + {{ experiment_raw | tojson }}.rsplit("-v", 1)[1]
+'''
+
+[drs_settings.dialect.waterpark-eerie-healpix.special.time_frequency]
+type = "call"
+call = '''
+(lambda value: {
+    "PT15M": "15min", "PT30M": "30min",
+    "PT1H": "1hr", "PT3H": "3hr", "PT6H": "6hr",
+    "P1D": "day", "P1M": "mon", "P1Y": "yr",
+}.get(value.upper(), value.lower()))(
+    {{ time_frequency_raw | tojson }}
+)
+'''
+
+[drs_settings.dialect.waterpark-eerie-healpix.special.grid_id]
+type = "call"
+call = '''
+str(2 ** int({{ level_type | default("9", true) | tojson }}))
+'''
+
+[waterpark-eerie-flat]
+fs_type = "s3"
+root_path = "s3://eerie/"
+drs_format = "waterpark-eerie-flat"
+glob_pattern = "eerie-*.zarr"
+
+[waterpark-eerie-flat.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+
+[waterpark-eerie-flat.defaults]
+project = "waterpark"
+product = "eerie"
+realm = "atmosphere"
+model = "icon-esm-er"
+institute = "mpi-m"
+ensemble = "r1i1p1f1"
+grid_label = "nested"
+bbox = [-180.0, 180.0, -90.0, 90.0]
+stac_collection_title = "product|EERIE (HEALPix)"
+stac_collection_description = "product|Simulations from the Horizon Europe project EERIE (European Eddy-Rich Earth-System Models), remapped to HEALPix and served as Zarr. These ICON-ESM-ER atmospheric products were produced by the Max Planck Institute for Meteorology."
+stac_collection_documentation_url = "product|https://eerie-project.eu/"
+stac_collection_keywords = "product|eddy-rich"
+stac_collection_thumbnail_url = "product|https://eerie-project.eu/wp-content/uploads/2023/03/Logo-EERIE-white-background.png"
+stac_collection_thumbnail_type = "product|image/png"
+
+[drs_settings.dialect.waterpark-eerie-flat]
+sources = ["path", "data"]
+
+[drs_settings.dialect.waterpark-eerie-flat.path_specs]
+dir_parts = []
+file_parts = ["experiment_raw", "time_frequency_raw", "time_aggregation", "level_type"]
+
+[drs_settings.dialect.waterpark-eerie-flat.data_specs]
+read_kws = { consolidated = true, decode_times = true, decode_coords = true, create_default_indexes = false }
+
+[drs_settings.dialect.waterpark-eerie-flat.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"
+
+[drs_settings.dialect.waterpark-eerie-flat.data_specs.stats.eerie_time_raw]
+stat = "range"
+coords = "time"
+
+[drs_settings.dialect.waterpark-eerie-flat.special.time]
+type = "call"
+call = '''
+(lambda pd, values: [
+    pd.Timestamp(values[0]).floor("min").isoformat(),
+    pd.Timestamp(values[-1]).ceil("min").isoformat(),
+] if len(values) == 2 and all(pd.notna(pd.Timestamp(v)) for v in values) else None)(
+    __import__("pandas"),
+    {{ eerie_time_raw | default([], true) | map("string") | list | tojson }}
+)
+'''
+
+[drs_settings.dialect.waterpark-eerie-flat.special.experiment]
+type = "call"
+call = '''
+(lambda value: {
+    "hist-1950": "hist-1950",
+    "future-ssp245": "highres-future-ssp245",
+}.get(value, value))(
+    {{ experiment_raw | tojson }}.removeprefix("eerie-").rsplit("-v", 1)[0]
+)
+'''
+
+[drs_settings.dialect.waterpark-eerie-flat.special.version]
+type = "call"
+call = '''
+"v" + {{ experiment_raw | tojson }}.rsplit("-v", 1)[1]
+'''
+
+[drs_settings.dialect.waterpark-eerie-flat.special.time_frequency]
+type = "call"
+call = '''
+(lambda value: {
+    "PT15M": "15min", "PT30M": "30min",
+    "PT1H": "1hr", "PT3H": "3hr", "PT6H": "6hr",
+    "P1D": "day", "P1M": "mon", "P1Y": "yr",
+}.get(value.upper(), value.lower()))(
+    {{ time_frequency_raw | tojson }}
+)
+'''
+
+[drs_settings.dialect.waterpark-eerie-flat.special.grid_id]
+type = "call"
+call = '''
+str(2 ** int({{ level_type | default("9", true) | tojson }}))
+'''

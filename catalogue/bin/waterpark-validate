@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+"""Waterpark policy checks on the dataset configs. Runs in CI only.
+
+Not a substitute for what the crawler enforces: this checks the rules that are
+ours - naming, the object store, which fields survive to the index, and what a
+contributed file may contain. The crawler itself is the judge of everything
+else, and CI proves that by crawling.
+
+A file may define more than one dataset; the dataset name, not the filename, is
+what the whole pipeline is keyed on, so names must be unique across all files.
+
+Python lives here and nowhere else: the ingest host runs the bash service and
+needs no Python at all.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import sys
+import tomllib
+from pathlib import Path
+
+DENY = {"xspies": "Waterpark is not permitted to index this bucket"}
+ENDPOINT = "https://s3.waterpark.dkrz.de"
+NAME = re.compile(r"^waterpark-[a-z0-9-]{1,40}$")
+REQUIRED = ("fs_type", "root_path", "drs_format", "glob_pattern")
+# Rendered for every record by schema.toml; a dataset file redefining them
+# would change what the unique key means.
+OWNED = ("uri", "file")
+
+# Built into the crawler's own schema, so usable without redeclaring them.
+FACETS = {
+    "project", "product", "institute", "model", "experiment", "ensemble",
+    "realm", "time_frequency", "variable", "cmor_table", "version", "dataset",
+    "level_type", "grid_id", "grid_label", "rcm_name", "rcm_version",
+    "driving_model", "time", "time_aggregation", "data_type", "bbox",
+    "format", "fs_type", "user",
+}
+
+
+def datasets_in(doc: dict) -> list[str]:
+    return [key for key in doc if key != "drs_settings"]
+
+
+def validate(schema: Path, files: list[Path], collections: Path | None,
+             minimum: int) -> list[str]:
+    problems: list[str] = []
+    try:
+        fields = set(tomllib.loads(schema.read_text())["drs_settings"]["index_schema"])
+    except (OSError, KeyError, tomllib.TOMLDecodeError) as exc:
+        return [f"{schema}: unusable ({exc})"]
+
+    if not files:
+        return ["no dataset files found; refusing to read that as 'delete everything'"]
+
+    products: set[str] = set()
+    seen: dict[str, str] = {}
+    for path in files:
+        def say(text, _file=path.name):
+            problems.append(f"{_file}: {text}")
+
+        if path.is_symlink() or not NAME.match(path.stem):
+            say(f"bad filename; must be a regular file matching {NAME.pattern}")
+            continue
+        try:
+            doc = tomllib.loads(path.read_text())
+        except tomllib.TOMLDecodeError as exc:
+            say(f"does not parse: {exc}")
+            continue
+
+        names = datasets_in(doc)
+        if not names:
+            say("defines no dataset")
+            continue
+
+        settings = doc.get("drs_settings") or {}
+        if not isinstance(settings, dict):
+            say("drs_settings is not a table")
+            continue
+        if set(settings) - {"dialect", "special"}:
+            say("drs_settings may only contain 'dialect' and 'special'")
+        shared = settings.get("special") or {}
+        for owned in OWNED:
+            if owned in shared:
+                say(f"'{owned}' is rendered by schema.toml, which the core team owns")
+        # A special outside a dialect applies to every dataset loaded with it,
+        # which is invisible when the file defines more than one.
+        if shared and len(names) > 1:
+            say("a file defining several datasets must keep its 'special' rules "
+                "inside drs_settings.dialect.<dataset>")
+        dialect = settings.get("dialect") or {}
+        if not isinstance(dialect, dict):
+            say("drs_settings.dialect is not a table")
+            dialect = {}
+        elif set(dialect) - set(names):
+            say(f"dialects {sorted(set(dialect) - set(names))} name no dataset in this file")
+
+        for name in names:
+            if not NAME.match(name):
+                say(f"'{name}' is not a usable dataset name")
+                continue
+            if name in seen:
+                say(f"'{name}' is already defined in {seen[name]}")
+                continue
+            seen[name] = path.name
+
+            body = doc[name]
+            if not isinstance(body, dict):
+                say(f"'{name}' is not a table")
+                continue
+            for key in REQUIRED:
+                if not isinstance(body.get(key), str):
+                    say(f"{name}: '{key}' is missing or not a string")
+            if "inherits_from" in body:
+                say(f"{name}: dataset files may not inherit from one another")
+            if body.get("drs_format") != name:
+                say(f"{name}: drs_format must be '{name}'")
+            if body.get("fs_type") != "s3":
+                say(f"{name}: fs_type must be 's3'")
+
+            root = str(body.get("root_path", ""))
+            scheme, _, rest = root.partition("://")
+            bucket = rest.split("/")[0]
+            if scheme != "s3" or not bucket:
+                say(f"{name}: root_path must be s3://<bucket>/…")
+            if bucket in DENY:
+                say(f"{name}: bucket '{bucket}': {DENY[bucket]}")
+
+            options = body.get("storage_options")
+            if not isinstance(options, dict):
+                say(f"{name}: storage_options is missing")
+            else:
+                if options.get("endpoint_url") != ENDPOINT:
+                    say(f"{name}: storage_options.endpoint_url must be {ENDPOINT}")
+                if options.get("anon") is not True:
+                    say(f"{name}: storage_options.anon must be true")
+
+            defaults = body.get("defaults") or {}
+            if not isinstance(defaults, dict):
+                say(f"{name}: defaults is not a table")
+                continue
+            for key in defaults:
+                if key not in FACETS and key not in fields:
+                    say(f"{name}: defaults key '{key}' is neither a built-in facet nor "
+                        f"declared in schema.toml, so it is dropped at index time")
+            if isinstance(defaults.get("product"), str):
+                products.add(defaults["product"].split("|")[-1])
+
+    if len(seen) < minimum:
+        problems.append(f"only {len(seen)} datasets, expected at least {minimum}")
+
+    # The site filters on `product`; a missing one indexes fine and is invisible.
+    if collections is None or not collections.is_file():
+        problems.append("cannot read the front-end collection list; "
+                        "product coverage is unchecked")
+    else:
+        found = re.search(r"visible_collections=([A-Za-z0-9_,\-]+)",
+                          collections.read_text())
+        if not found:
+            problems.append(f"no visible_collections found in {collections.name}")
+        elif missing := products - set(found.group(1).split(",")):
+            problems.append(
+                f"product(s) {sorted(missing)} are not in visible_collections in "
+                f"{collections.name}, so they will not show on the site")
+    return problems
+
+
+def main() -> int:
+    root = Path(os.environ.get("REPO_ROOT", "."))
+    problems = validate(root / "catalogue/schema.toml",
+                        sorted((root / "catalogue/datasets").glob("*.toml")),
+                        root / "landingpage/assets/stac-browser.config.js",
+                        minimum=15)
+    for problem in problems:
+        print(problem, file=sys.stderr)
+    print(f"{len(problems)} problem(s)")
+    return 1 if problems else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,77 @@
+# ============================================================================
+# reanalysis-era5:
+# s3://reanalysis/healpix/era5/*/level_*.zarr
+# example: reanalysis/healpix/era5/PT1H/level_4.zarr
+# ============================================================================
+
+[waterpark-reanalysis-era5]
+fs_type = "s3"
+root_path = "s3://reanalysis/healpix/era5/"
+drs_format = "waterpark-reanalysis-era5"
+glob_pattern = "level_*.zarr"
+[waterpark-reanalysis-era5.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+[waterpark-reanalysis-era5.defaults]
+project = "waterpark"
+product = "reanalysis-healpix"
+model = "ifs-cy41r2"
+experiment = "ERA5"
+realm = "atmosphere"
+stac_collection_title = "product|ERA5 (HEALPix)"
+stac_collection_description = "product|ERA5, the ECMWF fifth-generation global atmospheric reanalysis produced through the Copernicus Climate Change Service (C3S), combining a numerical weather-prediction model with observations into a consistent hourly record from 1940 onward. Here remapped to a HEALPix grid and served as Zarr for the Waterpark km-scale data pool. The thumbnail image has been taken from the https://cp.copernicus.org/articles/22/339/2026/cp-22-339-2026.html"
+stac_collection_documentation_url = "product|https://www.ecmwf.int/en/forecasts/dataset/ecmwf-reanalysis-v5"
+stac_collection_keywords = "product|reanalysis"
+stac_collection_thumbnail_url = "product|https://cp.copernicus.org/articles/22/339/2026/cp-22-339-2026-avatar-web.png"
+stac_collection_thumbnail_type = "product|image/png"
+[drs_settings.dialect.waterpark-reanalysis-era5]
+sources = ["path", "data"]
+[drs_settings.dialect.waterpark-reanalysis-era5.path_specs]
+dir_parts  = ["time_frequency_raw"]
+file_parts = ["variable", "level_type"]
+[drs_settings.dialect.waterpark-reanalysis-era5.data_specs.read_kws]
+consolidated = true
+decode_times = true
+decode_coords = true
+# TODO:
+# https://s3.waterpark.dkrz.de/reanalysis/healpix/era5/PT1H/level_7.zarr
+# https://s3.waterpark.dkrz.de/reanalysis/healpix/era5/P1M/level_7.zarr
+# https://s3.waterpark.dkrz.de/reanalysis/healpix/era5/P1D/level_7.zarr
+# the above three datasets have lat_vertices and lon_vertices in their variables. if those two coords be moved to
+# coordinates, we would remove the line below
+drop_variables = ["lat_vertices", "lon_vertices"]
+[drs_settings.dialect.waterpark-reanalysis-era5.data_specs.globals]
+institute_raw = "institution"
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+[drs_settings.dialect.waterpark-reanalysis-era5.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"
+[drs_settings.dialect.waterpark-reanalysis-era5.data_specs.stats.time]
+stat = "range"
+coords = "time"
+default = ["1970-01-01", "1970-01-01"]
+[drs_settings.special.institute]
+type = "call"
+call = '''
+(lambda name: {
+    "the european centre for medium-range weather forecasts, shinfield park, reading rg2 9ax, uk": "ecmwf"
+}.get(" ".join(name.split()).casefold(), name))(
+    {{ institute_raw | default("", true) | tojson }}
+)
+'''
+[drs_settings.special.time_frequency]
+type = "call"
+call = '''
+(lambda value: {
+    "PT1H": "1hr",
+    "PT3H": "3hr",
+    "PT6H": "6hr",
+    "P1D":  "day",
+    "P1M":  "mon",
+    "P1Y":  "yr",
+}.get(value.strip().upper(), value))(
+    {{ time_frequency_raw | default("", true) | tojson }}
+)
+'''

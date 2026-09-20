@@ -1,0 +1,62 @@
+# ============================================================================
+# reanalysis-oras5:
+# s3://reanalysis/healpix/oras5/opa*/level_*.zarr
+# example: reanalysis/healpix/oras5/opa0/level_1.zarr/
+# ============================================================================
+# TODO: the data store has inconsistent dimensions. `vomecrtn` has the length of 11 time_counter
+# while the rest have 480 time_counter which are aligned with the time_counter time steps itself.
+
+[waterpark-reanalysis-oras5]
+fs_type = "s3"
+root_path = "s3://reanalysis/healpix/oras5/"
+drs_format = "waterpark-reanalysis-oras5"
+glob_pattern = "level_*.zarr"
+[waterpark-reanalysis-oras5.storage_options]
+endpoint_url = "https://s3.waterpark.dkrz.de"
+anon = true
+[waterpark-reanalysis-oras5.defaults]
+project = "waterpark"
+product = "reanalysis-healpix"
+model = "nemo-3.4.1-lim2"
+experiment = "ORAS5"
+realm = "ocean"
+stac_collection_title = "product|Reanalyses: ERA5, ERA5-Land & ORAS5 (HEALPix)"
+stac_collection_description = "product|ECMWF reanalyses covering the atmosphere, land surface and ocean, remapped to a HEALPix grid and served as Zarr for the Waterpark km-scale data pool. The collection bundles three products: ERA5 - the fifth-generation global atmospheric reanalysis (hourly, 1940 onward, produced through the Copernicus Climate Change Service); ERA5-Land - an enhanced-resolution land-surface reanalysis derived by replaying ERA5's land component; and ORAS5 - the ECMWF Ocean ReAnalysis System 5, an eddy-permitting global ocean and sea-ice reanalysis provided as a five-member ensemble (opa0–opa4). The thumbnail image has been taken from the https://cp.copernicus.org/articles/22/339/2026/cp-22-339-2026.html"
+stac_collection_documentation_url = "product|https://www.ecmwf.int/en/forecasts/dataset/ecmwf-reanalysis-v5"
+stac_collection_keywords = "product|reanalysis"
+stac_collection_thumbnail_url = "product|https://cp.copernicus.org/articles/22/339/2026/cp-22-339-2026-avatar-web.png"
+stac_collection_thumbnail_type = "product|image/png"
+[drs_settings.dialect.waterpark-reanalysis-oras5]
+sources = ["path", "data"]
+[drs_settings.dialect.waterpark-reanalysis-oras5.path_specs]
+dir_parts  = ["ensemble"]
+file_parts = ["variable", "level_type"]
+[drs_settings.dialect.waterpark-reanalysis-oras5.data_specs.read_kws]
+consolidated = true
+decode_times = true
+# TODO: due to the inconsistent time_counter dimension we drop vomecrtn for time being
+# until it becomes consistent.
+drop_variables = ["vomecrtn"]
+[drs_settings.dialect.waterpark-reanalysis-oras5.data_specs.globals]
+institute_raw  = "institution"
+grid_id = "healpix_nside"
+grid_label = "healpix_order"
+[drs_settings.dialect.waterpark-reanalysis-oras5.data_specs.var_attrs.variable]
+var = "*"
+attr = "short_name"
+default = "__name__"
+[drs_settings.dialect.waterpark-reanalysis-oras5.data_specs.stats.time]
+stat = "range"
+coords = "time_counter"
+[drs_settings.dialect.waterpark-reanalysis-oras5.data_specs.stats.time_frequency]
+stat = "timedelta"
+coords = "time_counter"
+[drs_settings.special.institute]
+type = "call"
+call = '''
+(lambda name: {
+    "the european centre for medium-range weather forecasts, shinfield park, reading rg2 9ax, uk": "ecmwf"
+}.get(" ".join(name.split()).casefold(), name))(
+    {{ institute_raw | default("", true) | tojson }}
+)
+'''

@@ -1,0 +1,12 @@
+[Unit]
+Description=Report the Waterpark catalogue state after a failure
+
+[Service]
+Type=oneshot
+User=metadata-crawler
+Group=metadata-crawler
+EnvironmentFile=-/opt/waterpark/catalogue.env
+ExecStart=/usr/local/bin/waterpark-catalogue report
+
+# 'report' exits 1 when something is wrong. That is its job, not its failure.
+SuccessExitStatus=1
