@@ -13,8 +13,8 @@ server:  Pull artifact -> dumps/ Json -> Solr ×2
 
 ## How things works:
 
-1. CI crawls the buckets described in `datasets/`, daily and on every merge, 
-and publishes one catalogue per dataset as a workflow artifact. 
+1. CI crawls the buckets described in `datasets/`, daily and on every merge,
+and publishes one catalogue per dataset as a workflow artifact.
 2. The ingest host pulls the newest bundle every hour and indexes it into
 both Solr servers.
 
@@ -172,4 +172,4 @@ sudo ./catalogue/deploy.sh --wipe
 
 Lists what it deletes and asks for confirmation. Everything the service owns
 is under `/opt/waterpark`, so that directory, the five unit files and one
-symlink are the whole footprint. Solr and Postgress are left alone.
+symlink are the whole footprint. Solr and PostgreSQL are left alone.

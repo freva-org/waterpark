@@ -6,9 +6,6 @@ name: sync-shared
 # before it lands.
 #
 # Add a repository_dispatch trigger in grid-doctor if you want this to fire
-# on every upstream change rather than weekly. Weekly is usually enough for
-# prose.
-
 on:
   schedule:
     - cron: "0 6 * * *"
@@ -27,7 +24,18 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      - name: Create Freva bot token
+        id: bot-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.FREVA_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.FREVA_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
       - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.bot-token.outputs.token }}
 
       - uses: actions/setup-python@v7
         with:
@@ -35,11 +43,19 @@ jobs:
 
       - name: Pull the upstream shared docs
         working-directory: landingpage
-        run: python scripts/sync_shared.py --update ${{ inputs.ref }}
+        env:
+          UPSTREAM_REF: ${{ inputs.ref }}
+        run: |
+          if [[ -n "$UPSTREAM_REF" ]]; then
+            python scripts/sync_shared.py --update "$UPSTREAM_REF"
+          else
+            python scripts/sync_shared.py --update
+          fi
 
       - name: Open a pull request if anything moved
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+          BOT_SLUG: ${{ steps.bot-token.outputs.app-slug }}
         run: |
           set -euo pipefail
 
@@ -49,12 +65,14 @@ jobs:
           fi
 
           branch="chore/sync-shared"
+          bot_login="${BOT_SLUG}[bot]"
+          bot_id=$(gh api "users/${bot_login}" --jq '.id')
           pin=$(grep -m1 '^commit' landingpage/shared-sources.toml | cut -d'"' -f2)
 
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "$bot_login"
+          git config user.email "${bot_id}+${bot_login}@users.noreply.github.com"
           git checkout -B "$branch"
-          git add landingpage/shared landingpage/shared-sources.toml
+          git add landingpage/shared landingpage/shared-sources.toml landingpage/shared.lock
           git commit -m "docs: sync shared pages from grid-doctor@${pin:0:8}"
           # Force-push the same branch each run, so an already-open PR picks
           # up the new commit instead of a second PR being opened.

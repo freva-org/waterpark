@@ -195,7 +195,7 @@ copyright: >
 
 extra:
   # Empty in production: nginx serves the site and API on one origin.
-  # make dev sets WP_API_BASE.
+  # Set WP_API_BASE by hand to point the docs at an API on another origin.
   api_base: !ENV [WP_API_BASE, ""]
 
   # DKRZ Datenschutzerklärung for the signup consent line.

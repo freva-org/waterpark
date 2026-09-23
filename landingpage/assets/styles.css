@@ -62,6 +62,18 @@
   flex-shrink: 0;
 }
 
+/* Below Material's drawer breakpoint the header menus do not fit: five
+   titles push the site title, search and theme toggle off the right edge.
+   The navigation drawer already lists the same pages as one column (the
+   `nav:` block mirrors the dropdowns), so hand over to it there. The same
+   breakpoint as the sidebar rule above, mirrored: desktop gets the menus
+   and no drawer, everything smaller gets the drawer and no menus. */
+@media screen and (max-width: 76.234375em) {
+  .md-header__inner > .md-header__option:has(> .md-header__dropdown) {
+    display: none;
+  }
+}
+
 /* Dropdown surfaces. Important declarations override the plugin's inline styles. */
 .md-header__dropdown {
   --wp-menu-shadow: 0 12px 32px rgb(0 0 0 / 14%),
