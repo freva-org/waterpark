@@ -18,17 +18,19 @@ pages are shared between the two sites; see [Shared pages](#shared-pages).
 | `landingpage/` | mkdocs site: content, theme overrides, build tooling |
 | `catalogue/` | crawler configs, and the service that delivers what CI publishes |
 | `.dev/` | development stack: compose file, proxy config, secrets |
-| `Makefile` | entry point for everything below |
+| `justfile` | entry point for everything below; `just` lists every recipe |
 
 ## Development
 
 Everything runs in containers behind a proxy, so development is
-**same-origin** exactly like production behind nginx. There is no setup
-step.
+**same-origin** exactly like production behind nginx. The only thing to
+install is [just](https://just.systems) (`nix-shell -p just`,
+`conda install -c conda-forge just`, `pip install rust-just`, or your
+package manager).
 
 ```sh
-make dev          # foreground, Ctrl-C stops it
-make up           # same, detached
+just dev          # foreground, Ctrl-C stops it
+just up           # same, detached
 ```
 
 | | |
@@ -36,7 +38,7 @@ make up           # same, detached
 | `http://localhost:8000` | the site, with `/api` on the same origin |
 | `http://localhost:8000/mailbox/` | every outgoing email lands here |
 
-Using podman: `make dev COMPOSE=podman-compose`, or export `COMPOSE` once
+Using podman: `COMPOSE=podman-compose just dev`, or export `COMPOSE` once
 in your shell. Rootless is fine for either runtime.
 
 ### Reading the mail
@@ -50,7 +52,7 @@ the proxy, at `/mailbox/`.
 A confirmation link in a message there is clickable and takes you to
 `/newsletter/?status=success`, which is the whole double opt-in flow.
 
-To check without opening the UI, `make mail` prints what the API logged
+To check without opening the UI, `just mail` prints what listmonk logged
 alongside what mailpit actually holds. If those two disagree, you know
 which side to look at.
 
@@ -85,7 +87,7 @@ Editing anything under `landingpage/data`, `landingpage/shared`.
 Adding a **new** file to the docs needs one service restarted:
 
 ```sh
-docker compose -f dev/compose.yml restart docs
+just restart docs
 ```
 
 The docs container assembles `.build/data` at startup as a farm of
@@ -95,24 +97,34 @@ new files are not. Never edit anything under `.build/`; it is generated.
 ### Commands
 
 ```sh
-make logs S=api      # follow one service
-make shell S=docs    # shell inside a container
-make ps              # what is running
-make mail            # what the mailbox has caught
-make announce        # seed a test announcement so the banner shows
-make rebuild         # rebuild images ignoring the layer cache
-make down            # stop, keep volumes
-make clean           # stop, delete volumes and images
-make smoke           # drive the whole signup flow against the stack
-make check           # everything CI runs, in both projects
-make doctor          # dump everything needed to diagnose a broken stack
+just logs listmonk   # follow one service (no argument: all of them)
+just shell docs      # shell inside a container
+just restart docs    # restart one or more services
+just ps              # what is running
+just mail            # what the mailbox has caught
+just announce        # seed a test announcement so the banner shows
+just rebuild         # rebuild images ignoring the layer cache
+just down            # stop, keep volumes
+just clean           # stop, remove images, KEEP the database
+just seed-dump       # save listmonk's settings and lists as the dev seed
+just nuke            # delete everything, database included (asks first)
+just check           # everything CI runs for the docs
+just doctor          # dump everything needed to diagnose a broken stack
+```
+
+The docs site has its own justfile in `landingpage/`, usable on its own
+(`cd landingpage && just serve`) or from here as a module:
+
+```sh
+just site::serve     # docs alone on :8000, no listmonk or mailbox
+just site::build     # strict build into landingpage/site
 ```
 
 ### When something is wrong
 
-Start with `make doctor`. It prints the parsed compose config, the
+Start with `just doctor`. It prints the parsed compose config, the
 container list including exited ones, published ports, recent logs from
-proxy, docs and api, and what is actually in `.build/data`.
+proxy, docs, listmonk and the mailbox, and what is actually in `.build/data`.
 
 - **A 404 in the browser.** If the page says "This response came from
   Caddy", the proxy could not reach an upstream container. If it does not,
@@ -120,14 +132,14 @@ proxy, docs and api, and what is actually in `.build/data`.
 - **Nothing on `:8000` at all.** Check for a stray process holding the
   port: `pgrep -af "mkdocs serve"`.
 - **Emails not arriving.** They are in the mailbox, not your inbox.
-  `make mail` settles it either way.
+  `just mail` settles it either way.
 - **No log output from the API.** The application logger defaults to
   `ERROR`, which hides every "verification sent" and "address rejected"
   line. The stack sets `VERBOSITY=2` (INFO); `3` is DEBUG.
 - **The STAC or data browser page 404s.** Those two pages are generated at
   container start by scripts that clone and run npm. The step is
   deliberately non-fatal so the rest of the site still works when it
-  breaks. `SKIP_ASSET_BUILD=1 make dev` skips it entirely, which confirms
+  breaks. `SKIP_ASSET_BUILD=1 just dev` skips it entirely, which confirms
   whether that is what is failing.
 
 ## Content
@@ -160,12 +172,12 @@ Every entry needs an `expires`, deliberately. A notice that cannot clear
 itself is how the previous banner got stuck; anything true indefinitely is
 documentation and belongs in a page.
 
-Locally, `make announce` seeds a two-hour test notice.
+Locally, `just announce` seeds a four-hour test notice.
 
 ### Gallery
 
 `landingpage/examples/` holds short, complete programs that do something
-useful with the data in the hub, and `scripts/build_gallery.py` turns them
+useful with the data in the hub, and `scripts/build_examples.py` turns them
 into pages. Each script runs on its own against the public endpoint with
 nothing but `examples/requirements.txt`, which is the property to protect:
 nothing in there may depend on being inside a documentation build.
@@ -174,13 +186,13 @@ Execution and rendering are deliberately separate, for the same reason the
 shared pages are vendored rather than fetched.
 
 ```
-python scripts/build_gallery.py --render --out .build/data   # offline, every docs build
-make gallery            # run the examples, refresh assets/gallery/
-make gallery ONLY=03    # just one
-make gallery-check      # which figures no longer match their example
+python scripts/build_examples.py --render --out .build/data  # offline, every docs build
+just site::examples          # run the examples, refresh assets/examples/
+just site::examples 03       # just one
+just site::examples-check    # which figures no longer match their example
 ```
 
-The figures in `landingpage/assets/gallery/` are committed. The docs build
+The figures in `landingpage/assets/examples/` are committed. The docs build
 therefore never touches S3, a changed plot arrives as a reviewable diff, and
 a bucket being migrated shows up as a red `gallery` run rather than as a
 documentation build nobody can merge past. A page whose figure is missing

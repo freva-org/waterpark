@@ -45,7 +45,7 @@ script only substitutes the card grid into it where it finds the marker::
 
 Everything around the marker is yours. The marker is an HTML comment, so the
 source file renders correctly on its own, which means the page can be read on
-GitHub and edited in ``make serve`` with live reload. Prefer this shape for
+GitHub and edited in ``just serve`` with live reload. Prefer this shape for
 anything else that needs machine-generated content on a human-written page:
 a real file with a placeholder beats a page assembled out of string constants
 in Python, where the prose is invisible to anyone looking for it.
@@ -280,7 +280,7 @@ def inject_cards(examples: Sequence[Example], out: Path) -> None:
     """Substitute the card grid into the hand-written index page.
 
     The page has already been copied into the build tree by docs-prep. In
-    ``make serve`` that copy is a *symlink* back to ``data/examples/index.md``
+    ``just serve`` that copy is a *symlink* back to ``data/examples/index.md``
     (docs-prep uses ``cp -as`` so mkdocs' watcher sees edits), so the file is
     replaced rather than written through: opening it for writing would edit
     the source file in place and commit the generated cards to git.

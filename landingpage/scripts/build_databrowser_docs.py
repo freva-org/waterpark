@@ -255,7 +255,7 @@ def inject_mount(markup: str) -> None:
     """Substitute the mount div into the hand-written page.
 
     The page has already been copied into the build tree by docs-prep. Under
-    ``make serve`` that copy is a *symlink* back into ``data/`` (docs-prep
+    ``just serve`` that copy is a *symlink* back into ``data/`` (docs-prep
     uses ``cp -as`` so mkdocs' watcher sees edits), so the file is replaced
     rather than written through: opening it for writing would edit the source
     page in place and commit generated markup to git.

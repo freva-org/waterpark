@@ -61,7 +61,7 @@ demonstrate it rather than describing it.
    ```bash
    cd ..
    python scripts/build_examples.py --run --only 09
-   make docs
+   just build
    ```
 5. Add the page to the `nav:` block in `mkdocs.yml`. The strict build fails
    with a clear message if you forget.
@@ -77,5 +77,5 @@ hash recorded when its figure was made, and reports the ones that no longer
 match. It needs no network. CI runs it on every pull request that touches
 this directory.
 
-To refresh them, run `make examples` locally, or trigger the `examples`
+To refresh them, run `just examples` in `landingpage/` locally, or trigger the `examples`
 workflow from the Actions tab and let it open a pull request.

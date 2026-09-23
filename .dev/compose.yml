@@ -120,7 +120,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       # Restored only when the data directory is empty, which is exactly
       # when listmonk would otherwise come up with default settings and a
-      # freshly generated list UUID. See `make seed-dump`.
+      # freshly generated list UUID. See `just seed-dump`.
       - ./postgres/init:/docker-entrypoint-initdb.d:ro,z
     healthcheck:
       # listmonk's --install fails confusingly if it starts before the

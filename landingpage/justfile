@@ -1,0 +1,89 @@
+# Waterpark landing page.
+#
+#   just            list every recipe
+#   just serve      docs on :8000 with live reload
+#
+# Docs only. Running the docs alongside listmonk and a mailbox is the
+# workspace justfile's job, one directory up: `just dev` there. Everything
+# here works with this directory on its own, and from the root as
+# `just site::<recipe>`.
+#
+# tox still owns the build itself, because the copy-then-build dance in
+# [docs-prep] is genuinely tox's job and CI calls those envs directly.
+# These are thin wrappers so nobody has to remember the env names.
+
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+state_dir := env("STATE_DIR", source_directory() / ".dev")
+
+[private]
+default:
+    @just --list
+
+# WP_API_BASE reaches mkdocs through `!ENV` and ends up in the rendered
+# HTML. It must be empty for anything that gets published.
+
+# Serve the docs at localhost:8000 with live reload
+[group('docs')]
+serve:
+    exec tox -e docs-serve
+
+# Build the site into ./site
+[group('docs')]
+build:
+    WP_API_BASE= tox -e docs
+
+# Publish ./site to gh-pages (normally CI does this)
+[confirm("Publish to gh-pages by hand? CI normally does this. [y/N]")]
+[group('docs')]
+deploy:
+    WP_API_BASE= tox -e docs-deploy
+
+# Everything CI runs: shared pin, examples freshness, strict build
+[group('docs')]
+check:
+    tox -e shared-check
+    tox -e examples-check
+    WP_API_BASE= tox -e docs
+
+# --- content maintenance ----------------------------------------------------
+
+# Verify the vendored shared docs still match the pin
+[group('content')]
+shared:
+    python3 scripts/sync_shared.py --check
+
+# Re-pin the shared docs to grid-doctor's tip
+[group('content')]
+shared-update:
+    python3 scripts/sync_shared.py --update
+
+# Refresh the dataset listing from the live S3 endpoint
+[group('content')]
+buckets:
+    python3 scripts/refresh_buckets.py
+
+# Report whether the dataset listing is stale
+[group('content')]
+buckets-check:
+    python3 scripts/refresh_buckets.py --check
+
+# The examples go to the network; the docs build does not. Refreshing the
+# figures is therefore its own step, run when an example changes rather than
+# on every build.
+
+# Run the examples and refresh their figures; `just examples 03` for one
+[group('content')]
+examples only="":
+    tox -e examples -- {{ if only != "" { "--only " + quote(only) } else { "" } }}
+
+# Report examples whose figures no longer match their code
+[group('content')]
+examples-check:
+    tox -e examples-check
+
+# Remove build output and local state
+[group('docs')]
+clean:
+    rm -rf .build site site-data "{{ state_dir }}"
+    @echo "cleaned"

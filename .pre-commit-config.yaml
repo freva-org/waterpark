@@ -2,8 +2,8 @@
 # CI runs: anything slow or needing the network stays in tox, so committing
 # never blocks on a container build or a GitHub fetch.
 #
-#   make hooks              install (once per clone)
-#   make lint               run everything over the whole tree
+#   just hooks              install (once per clone)
+#   just lint               run everything over the whole tree
 #   SKIP=isort git commit   bypass one hook
 #   git commit --no-verify  bypass all of them
 #
