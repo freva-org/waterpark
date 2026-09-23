@@ -42,6 +42,40 @@ function configureHeaderNavigation() {
   });
 }
 
+// The plugin opens a menu on mouseenter and toggles it on click. A tap
+// fires both, in that order, so on touch screens the menu opened and closed
+// again in the same gesture. Remember what kind of pointer went down last
+// and let taps go through the click toggle alone. Wide touch screens (a
+// tablet in landscape) still show the header menus, so this is needed on
+// top of the CSS hand-over to the drawer.
+let wpLastPointerType = "mouse";
+document.addEventListener(
+  "pointerdown",
+  (event) => {
+    wpLastPointerType = event.pointerType;
+  },
+  { capture: true, passive: true }
+);
+
+function wpIgnoreTouch(name) {
+  const original = window[name];
+  if (typeof original !== "function" || original.wpTouchAware) {
+    return;
+  }
+  const wrapped = function (...args) {
+    if (wpLastPointerType === "touch") {
+      return undefined;
+    }
+    return original.apply(this, args);
+  };
+  wrapped.wpTouchAware = true;
+  window[name] = wrapped;
+}
+
+// The plugin's inline handlers look these up by name when they fire.
+wpIgnoreTouch("showHeaderDropdown");
+wpIgnoreTouch("hideHeaderDropdown");
+
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", configureHeaderNavigation);
 } else {
