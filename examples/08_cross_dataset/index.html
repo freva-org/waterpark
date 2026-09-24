@@ -1,0 +1,2071 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The HEALPix Data Hub on s3">
+      
+      
+      
+        <link rel="canonical" href="https://waterpark.dkrz.de/examples/08_cross_dataset/">
+      
+      
+        <link rel="prev" href="../07_pyramid_levels/">
+      
+      
+        <link rel="next" href="../../high-level-access/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Comparing two datasets without regridding - Waterpark</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+  
+  
+    
+      
+      
+    
+  
+  
+  <style>:root{--md-admonition-icon--example:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M12%203C7.58%203%204%204.79%204%207s3.58%204%208%204%208-1.79%208-4-3.58-4-8-4M4%209v3c0%202.21%203.58%204%208%204s8-1.79%208-4V9c0%202.21-3.58%204-8%204s-8-1.79-8-4m0%205v3c0%202.21%203.58%204%208%204s8-1.79%208-4v-3c0%202.21-3.58%204-8%204s-8-1.79-8-4%22/%3E%3C/svg%3E');}</style>
+
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/styles.css?h=94cfcdfd">
+    
+      <link rel="stylesheet" href="../../assets/waterpark-tree.css?h=1a5eaf40">
+    
+      <link rel="stylesheet" href="../../assets/stac-browser.css?h=c58765b6">
+    
+      <link rel="stylesheet" href="../../assets/databrowser.css?h=ce4bab62">
+    
+      <link rel="stylesheet" href="../../assets/waterpark-newsletter.css?h=3c4a3f17">
+    
+      <link rel="stylesheet" href="../../assets/waterpark-focus.css?h=a1a4670f">
+    
+      <link rel="stylesheet" href="../../assets/waterpark-announce.css?h=5ef5cfa4">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Comparing two datasets without regridding - Waterpark" />
+<meta property="og:description" content="The HEALPix Data Hub on s3" />
+<meta property="og:image" content="https://waterpark.dkrz.de/assets/images/social/examples/08_cross_dataset.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content="https://waterpark.dkrz.de/examples/08_cross_dataset/" />
+<meta property="twitter:card" content="summary_large_image" />
+<meta property="twitter:title" content="Comparing two datasets without regridding - Waterpark" />
+<meta property="twitter:description" content="The HEALPix Data Hub on s3" />
+<meta property="twitter:image" content="https://waterpark.dkrz.de/assets/images/social/examples/08_cross_dataset.png" />
+</head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#comparing-two-datasets-without-regridding" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+  <div data-wp-announce hidden></div>
+
+          </div>
+          
+        </aside>
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Waterpark" class="md-header__button md-logo" aria-label="Waterpark" data-md-component="logo">
+      
+  <img src="../../assets/logo-512.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Waterpark
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Comparing two datasets without regridding
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256l137.3-137.4c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+
+    
+    <!--
+  Header Dropdown - Rendered directly in header
+-->
+
+  
+    <div class="md-header__option" style="margin-right: 0.1rem;">
+      <div class="md-header__dropdown"
+           style="position: relative; display: inline-block;"
+           onmouseenter="showHeaderDropdown(this)"
+           onmouseleave="hideHeaderDropdown(this)">
+        <button class="md-header__button"
+                style="padding: 0.4rem; display: flex; align-items: center; gap: 0.3rem"
+                onclick="toggleHeaderDropdown(event)">
+          
+          <span style="font-size: 0.7rem;">Find data</span>
+        </button>
+        <div class="md-header__dropdown-content"
+             style="display: none; position: absolute; left: 0; top: 100%; background: var(--md-default-bg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: 0.1rem; box-shadow: var(--md-shadow-z2); min-width: 200px; z-index: 1000;">
+          
+            
+              <a href="/databrowser/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Data Browser
+              </a>
+            
+          
+            
+              <a href="/stac-browser/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                STAC Browser
+              </a>
+            
+          
+        </div>
+      </div>
+    </div>
+  
+    <div class="md-header__option" style="margin-right: 0.1rem;">
+      <div class="md-header__dropdown"
+           style="position: relative; display: inline-block;"
+           onmouseenter="showHeaderDropdown(this)"
+           onmouseleave="hideHeaderDropdown(this)">
+        <button class="md-header__button"
+                style="padding: 0.4rem; display: flex; align-items: center; gap: 0.3rem"
+                onclick="toggleHeaderDropdown(event)">
+          
+          <span style="font-size: 0.7rem;">Examples</span>
+        </button>
+        <div class="md-header__dropdown-content"
+             style="display: none; position: absolute; left: 0; top: 100%; background: var(--md-default-bg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: 0.1rem; box-shadow: var(--md-shadow-z2); min-width: 200px; z-index: 1000;">
+          
+            
+              <a href="/examples/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Start here
+              </a>
+            
+          
+            
+              <a href="/examples/01_first_map/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                A map of one month
+              </a>
+            
+          
+            
+              <a href="/examples/02_global_mean/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                The global mean is just a mean
+              </a>
+            
+          
+            
+              <a href="/examples/03_region_bbox/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Cutting out a region
+              </a>
+            
+          
+            
+              <a href="/examples/04_zonal_mean/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Zonal means come for free
+              </a>
+            
+          
+            
+              <a href="/examples/05_meridional_mean/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Meridional means, and why they are harder
+              </a>
+            
+          
+            
+              <a href="/examples/06_hovmoeller/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                A Hovmöller diagram
+              </a>
+            
+          
+            
+              <a href="/examples/07_pyramid_levels/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Moving up and down the pyramid
+              </a>
+            
+          
+            
+              <a href="/examples/08_cross_dataset/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Comparing two datasets without regridding
+              </a>
+            
+          
+        </div>
+      </div>
+    </div>
+  
+    <div class="md-header__option" style="margin-right: 0.1rem;">
+      <div class="md-header__dropdown"
+           style="position: relative; display: inline-block;"
+           onmouseenter="showHeaderDropdown(this)"
+           onmouseleave="hideHeaderDropdown(this)">
+        <button class="md-header__button"
+                style="padding: 0.4rem; display: flex; align-items: center; gap: 0.3rem"
+                onclick="toggleHeaderDropdown(event)">
+          
+          <span style="font-size: 0.7rem;">Tips and tricks</span>
+        </button>
+        <div class="md-header__dropdown-content"
+             style="display: none; position: absolute; left: 0; top: 100%; background: var(--md-default-bg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: 0.1rem; box-shadow: var(--md-shadow-z2); min-width: 200px; z-index: 1000;">
+          
+            
+              <a href="/high-level-access/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                High resolution data
+              </a>
+            
+          
+        </div>
+      </div>
+    </div>
+  
+    <div class="md-header__option" style="margin-right: 0.1rem;">
+      <div class="md-header__dropdown"
+           style="position: relative; display: inline-block;"
+           onmouseenter="showHeaderDropdown(this)"
+           onmouseleave="hideHeaderDropdown(this)">
+        <button class="md-header__button"
+                style="padding: 0.4rem; display: flex; align-items: center; gap: 0.3rem"
+                onclick="toggleHeaderDropdown(event)">
+          
+          <span style="font-size: 0.7rem;">Concepts</span>
+        </button>
+        <div class="md-header__dropdown-content"
+             style="display: none; position: absolute; left: 0; top: 100%; background: var(--md-default-bg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: 0.1rem; box-shadow: var(--md-shadow-z2); min-width: 200px; z-index: 1000;">
+          
+            
+              <a href="/storage_concepts/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                HEALPix in Zarr on S3
+              </a>
+            
+          
+            
+              <a href="/storage_concepts/why-healpix/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Why HEALPix?
+              </a>
+            
+          
+            
+              <a href="/storage_concepts/zarr-and-s3/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Why Zarr and S3?
+              </a>
+            
+          
+            
+              <a href="/technical-decisions/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Remapping decisions
+              </a>
+            
+          
+            
+              <a href="/appendix-remapping-benchmark/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Remapping benchmark
+              </a>
+            
+          
+        </div>
+      </div>
+    </div>
+  
+    <div class="md-header__option" style="margin-right: 0.1rem;">
+      <div class="md-header__dropdown"
+           style="position: relative; display: inline-block;"
+           onmouseenter="showHeaderDropdown(this)"
+           onmouseleave="hideHeaderDropdown(this)">
+        <button class="md-header__button"
+                style="padding: 0.4rem; display: flex; align-items: center; gap: 0.3rem"
+                onclick="toggleHeaderDropdown(event)">
+          
+          <span style="font-size: 0.7rem;">Operation</span>
+        </button>
+        <div class="md-header__dropdown-content"
+             style="display: none; position: absolute; left: 0; top: 100%; background: var(--md-default-bg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: 0.1rem; box-shadow: var(--md-shadow-z2); min-width: 200px; z-index: 1000;">
+          
+            
+              <a href="/tools/"
+                 
+                 style="display: block; padding: 0.5rem 1rem; color: var(--md-default-fg-color); text-decoration: none; font-size: 0.7rem;"
+                 onmouseover="this.style.backgroundColor='var(--md-default-fg-color--lightest)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+                Operator Tools
+              </a>
+            
+          
+        </div>
+      </div>
+    </div>
+  
+
+
+<script>
+  // Dropdown interaction functions
+  if (typeof toggleHeaderDropdown === 'undefined') {
+    function toggleHeaderDropdown(event) {
+      event.stopPropagation();
+      const dropdown = event.target.closest('.md-header__dropdown');
+      const content = dropdown.querySelector('.md-header__dropdown-content');
+      const isVisible = content.style.display === 'block';
+
+      // Close all other dropdowns
+      document.querySelectorAll('.md-header__dropdown-content').forEach(el => {
+        el.style.display = 'none';
+      });
+
+      // Toggle current dropdown
+      content.style.display = isVisible ? 'none' : 'block';
+    }
+
+    function showHeaderDropdown(dropdown) {
+      const content = dropdown.querySelector('.md-header__dropdown-content');
+      content.style.display = 'block';
+    }
+
+    function hideHeaderDropdown(dropdown) {
+      setTimeout(() => {
+        const content = dropdown.querySelector('.md-header__dropdown-content');
+        if (!dropdown.matches(':hover')) {
+          content.style.display = 'none';
+        }
+      }, 100);
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function() {
+      document.querySelectorAll('.md-header__dropdown-content').forEach(el => {
+        el.style.display = 'none';
+      });
+      document.querySelectorAll('.md-header__dropdown-submenu').forEach(el => {
+        el.style.display = 'none';
+      });
+    });
+
+    // Nested dropdown functions
+    function showNestedDropdown(item) {
+      const submenu = item.querySelector('.md-header__dropdown-submenu');
+      if (submenu) {
+        submenu.style.display = 'block';
+      }
+    }
+
+    function hideNestedDropdown(item) {
+      setTimeout(() => {
+        if (!item.matches(':hover')) {
+          const submenu = item.querySelector('.md-header__dropdown-submenu');
+          if (submenu) {
+            submenu.style.display = 'none';
+          }
+        }
+      }, 100);
+    }
+  }
+</script>
+
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+  
+    
+      <div class="md-sidebar md-sidebar--primary"
+           data-md-component="sidebar" data-md-type="navigation"
+           >
+        <div class="md-sidebar__scrollwrap">
+          <div class="md-sidebar__inner">
+            
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Waterpark" class="md-nav__button md-logo" aria-label="Waterpark" data-md-component="logo">
+      
+  <img src="../../assets/logo-512.png" alt="logo">
+
+    </a>
+    Waterpark
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Find data
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Find data
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../databrowser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Browser
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../stac-browser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    STAC Browser
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start here
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_first_map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A map of one month
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_global_mean/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The global mean is just a mean
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_region_bbox/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cutting out a region
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_zonal_mean/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zonal means come for free
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_meridional_mean/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Meridional means, and why they are harder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_hovmoeller/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A Hovmöller diagram
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_pyramid_levels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Moving up and down the pyramid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparing two datasets without regridding
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparing two datasets without regridding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-two-stores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The two stores
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#three-things-have-to-line-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three things have to line up
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The comparison
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The plot
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-left-to-be-careful-about" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is left to be careful about
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tips and tricks
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tips and tricks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../high-level-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    High resolution data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../storage_concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HEALPix in Zarr on S3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../storage_concepts/why-healpix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why HEALPix?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../storage_concepts/zarr-and-s3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why Zarr and S3?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../technical-decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Remapping decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendix-remapping-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Remapping benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operator Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+          </div>
+        </div>
+      </div>
+    
+    <div class="md-sidebar md-sidebar--secondary"
+         data-md-component="sidebar" data-md-type="toc">
+      <div class="md-sidebar__scrollwrap">
+        <div class="md-sidebar__inner">
+          
+            
+          
+            
+          
+            
+              <nav class="md-nav" aria-label="Examples">
+                <span class="md-nav__title">Examples</span>
+                <ul class="md-nav__list">
+                  
+                    <li class="md-nav__item">
+                      
+                        <a href="../"
+                           class="md-nav__link"
+                           >
+                          Start here
+                        </a>
+                      
+                    </li>
+                  
+                    <li class="md-nav__item">
+                      
+                        <a href="../01_first_map/"
+                           class="md-nav__link"
+                           >
+                          A map of one month
+                        </a>
+                      
+                    </li>
+                  
+                    <li class="md-nav__item">
+                      
+                        <a href="../02_global_mean/"
+                           class="md-nav__link"
+                           >
+                          The global mean is just a mean
+                        </a>
+                      
+                    </li>
+                  
+                    <li class="md-nav__item">
+                      
+                        <a href="../03_region_bbox/"
+                           class="md-nav__link"
+                           >
+                          Cutting out a region
+                        </a>
+                      
+                    </li>
+                  
+                    <li class="md-nav__item">
+                      
+                        <a href="../04_zonal_mean/"
+                           class="md-nav__link"
+                           >
+                          Zonal means come for free
+                        </a>
+                      
+                    </li>
+                  
+                    <li class="md-nav__item">
+                      
+                        <a href="../05_meridional_mean/"
+                           class="md-nav__link"
+                           >
+                          Meridional means, and why they are harder
+                        </a>
+                      
+                    </li>
+                  
+                    <li class="md-nav__item">
+                      
+                        <a href="../06_hovmoeller/"
+                           class="md-nav__link"
+                           >
+                          A Hovmöller diagram
+                        </a>
+                      
+                    </li>
+                  
+                    <li class="md-nav__item">
+                      
+                        <a href="../07_pyramid_levels/"
+                           class="md-nav__link"
+                           >
+                          Moving up and down the pyramid
+                        </a>
+                      
+                    </li>
+                  
+                    <li class="md-nav__item md-nav__item--active">
+                      
+                        <a href="./"
+                           class="md-nav__link md-nav__link--active"
+                           aria-current="page">
+                          Comparing two datasets without regridding
+                        </a>
+                      
+                    </li>
+                  
+                </ul>
+              </nav>
+            
+          
+            
+          
+            
+          
+            
+          
+          
+            <div style="margin-top: 1rem;">
+              
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-two-stores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The two stores
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#three-things-have-to-line-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three things have to line up
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The comparison
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The plot
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-left-to-be-careful-about" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is left to be careful about
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+            </div>
+          
+        </div>
+      </div>
+    </div>
+  
+
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<!-- Generated by scripts/build_examples.py from examples/08_cross_dataset.py.
+     Edit the example, not this file. -->
+
+<h1 id="comparing-two-datasets-without-regridding">Comparing two datasets without regridding<a class="headerlink" href="#comparing-two-datasets-without-regridding" title="Permanent link">&para;</a></h1>
+<p>This is the example the hub exists for.</p>
+<p>Comparing a model run against a reanalysis normally starts with a day of
+grid work: find the two grids, pick a common target, choose a remapping
+scheme, generate weights, argue about conservative versus bilinear, and
+discover afterwards that the difference field has a suspicious pattern at
+the poles. The comparison itself is the easy part and it is never where the
+time goes.</p>
+<p>Both stores below are HEALPix, nested, on the same sphere. Cell <code>i</code> at level
+5 is the same patch of the planet in both files, by construction, because
+the grid is defined by the index rather than agreed by convention. So the
+grid work is not simplified here. It is absent.</p>
+<h2 id="the-two-stores">The two stores<a class="headerlink" href="#the-two-stores" title="Permanent link">&para;</a></h2>
+<p>ECMWF's ERA5 reanalysis and the nextGEMS ICON cycle-4 run, from different
+institutions through different pipelines, both published at HEALPix level
+5. One is monthly, the other daily.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">cartopy.crs</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ccrs</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">healpix_geo</span><span class="w"> </span><span class="kn">import</span> <span class="n">nested</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">S3</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"anon"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">"endpoint_url"</span><span class="p">:</span> <span class="s2">"https://s3.waterpark.dkrz.de"</span><span class="p">}</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">ERA5</span> <span class="o">=</span> <span class="s2">"s3://reanalysis/healpix/era5/P1M/level_5.zarr"</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">MODEL</span> <span class="o">=</span> <span class="s2">"s3://nextgems/healpix/ngc4008/P1D/level_5.zarr"</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="n">era5</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span><span class="n">ERA5</span><span class="p">,</span> <span class="n">storage_options</span><span class="o">=</span><span class="n">S3</span><span class="p">,</span> <span class="n">chunks</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">model</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span><span class="n">MODEL</span><span class="p">,</span> <span class="n">storage_options</span><span class="o">=</span><span class="n">S3</span><span class="p">,</span> <span class="n">chunks</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">store</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">"ERA5"</span><span class="p">,</span> <span class="n">era5</span><span class="p">),</span> <span class="p">(</span><span class="s2">"ngc4008"</span><span class="p">,</span> <span class="n">model</span><span class="p">)):</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="nb">print</span><span class="p">(</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">8s</span><span class="si">}</span><span class="s2"> level </span><span class="si">{</span><span class="n">store</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'healpix_level'</span><span class="p">,</span><span class="w"> </span><span class="s1">'7'</span><span class="p">)</span><span class="si">}</span><span class="s2">, "</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">store</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s1">'cell'</span><span class="p">]</span><span class="si">:</span><span class="s2">6d</span><span class="si">}</span><span class="s2"> cells, "</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">store</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s1">'time'</span><span class="p">]</span><span class="si">:</span><span class="s2">6d</span><span class="si">}</span><span class="s2"> time steps"</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="p">)</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="k">assert</span> <span class="n">era5</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"cell"</span><span class="p">]</span> <span class="o">==</span> <span class="n">model</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"cell"</span><span class="p">]</span>
+</code></pre></div>
+<h2 id="three-things-have-to-line-up">Three things have to line up<a class="headerlink" href="#three-things-have-to-line-up" title="Permanent link">&para;</a></h2>
+<p>Variable, level and time. Only the middle one is a grid problem, and it is
+the one that turns out to be free.</p>
+<p><strong>Variable.</strong> Both of these happen to use CMOR names, so <code>tas</code> is <code>tas</code> in
+each. Do not count on it: the hub carries stores using ECMWF short names
+and stores using native model names, and no amount of clever indexing
+fixes a naming difference. That is a lookup table you write once.</p>
+<p><strong>Level.</strong> Equal, so there is nothing to do. Had the model been a level
+finer, <code>model.coarsen(cell=4).mean()</code> would have been the entire
+adjustment, as in the <a href="../07_pyramid_levels/">previous example</a>.</p>
+<p><strong>Time.</strong> A monthly mean series and a daily mean series, both reduced to
+one annual mean. Neither reduction is a plain <code>.mean("time")</code>: months have
+different lengths, so the monthly series needs day weights, and the daily
+series needs a check that the year is actually complete.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">YEAR</span> <span class="o">=</span> <span class="s2">"2021"</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">era5_months</span> <span class="o">=</span> <span class="n">era5</span><span class="p">[</span><span class="s2">"tas"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">YEAR</span><span class="p">)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">model_days</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="s2">"tas"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">YEAR</span><span class="p">)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">days_in_month</span> <span class="o">=</span> <span class="n">era5_months</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">days_in_month</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">era5_mean</span> <span class="o">=</span> <span class="p">((</span><span class="n">era5_months</span> <span class="o">*</span> <span class="n">days_in_month</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="s2">"time"</span><span class="p">)</span> <span class="o">/</span> <span class="n">days_in_month</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">model_mean</span> <span class="o">=</span> <span class="n">model_days</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="s2">"time"</span><span class="p">)</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">era5_months</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s1">'time'</span><span class="p">]</span><span class="si">}</span><span class="s2"> ERA5 months, </span><span class="si">{</span><span class="n">model_days</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s1">'time'</span><span class="p">]</span><span class="si">}</span><span class="s2"> model days"</span><span class="p">)</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="nb">print</span><span class="p">(</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="sa">f</span><span class="s2">"month lengths </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">days_in_month</span><span class="o">.</span><span class="n">min</span><span class="p">())</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">days_in_month</span><span class="o">.</span><span class="n">max</span><span class="p">())</span><span class="si">}</span><span class="s2">, "</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="sa">f</span><span class="s2">"summing to </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">days_in_month</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span><span class="si">}</span><span class="s2">"</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="p">)</span>
+</code></pre></div>
+<h2 id="the-comparison">The comparison<a class="headerlink" href="#the-comparison" title="Permanent link">&para;</a></h2>
+<p>And that is it. Two arrays of 12288 numbers each, describing the same
+12288 patches of the Earth, so subtraction is defined. No weights file, no
+interpolation, no target grid to agree on, and nothing that needed to be
+told where the poles are.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">bias</span> <span class="o">=</span> <span class="n">model_mean</span><span class="o">.</span><span class="n">values</span> <span class="o">-</span> <span class="n">era5_mean</span><span class="o">.</span><span class="n">values</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"mean bias  </span><span class="si">{</span><span class="n">bias</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">+.2f</span><span class="si">}</span><span class="s2"> K"</span><span class="p">)</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"rms  bias  </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">bias</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> K"</span><span class="p">)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"worst cell </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">bias</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> K"</span><span class="p">)</span>
+</code></pre></div>
+<p>The global mean bias is an unweighted mean over cells, and correct for the
+reason given in the <a href="../02_global_mean/">equal area example</a>.</p>
+<h2 id="the-plot">The plot<a class="headerlink" href="#the-plot" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">level</span> <span class="o">=</span> <span class="n">era5</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"healpix_level"</span><span class="p">]</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">latitude</span> <span class="o">=</span> <span class="n">era5</span><span class="p">[</span><span class="s2">"latitude"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">_</span><span class="p">,</span> <span class="n">rings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">latitude</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">ring_lat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">latitude</span><span class="p">[</span><span class="n">rings</span> <span class="o">==</span> <span class="n">r</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rings</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)])</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">zonal_bias</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">bias</span><span class="p">[</span><span class="n">rings</span> <span class="o">==</span> <span class="n">r</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rings</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)])</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="k">def</span><span class="w"> </span><span class="nf">rasterize</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">nlon</span><span class="o">=</span><span class="mi">1080</span><span class="p">,</span> <span class="n">nlat</span><span class="o">=</span><span class="mi">540</span><span class="p">):</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="n">lon</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">180</span><span class="p">,</span> <span class="mi">180</span><span class="p">,</span> <span class="n">nlon</span><span class="p">)</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">lat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">90</span><span class="p">,</span> <span class="o">-</span><span class="mi">90</span><span class="p">,</span> <span class="n">nlat</span><span class="p">)</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">mesh_lon</span><span class="p">,</span> <span class="n">mesh_lat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">)</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="n">cells</span> <span class="o">=</span> <span class="n">nested</span><span class="o">.</span><span class="n">lonlat_to_healpix</span><span class="p">(</span><span class="n">mesh_lon</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">mesh_lat</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">level</span><span class="p">)</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">)[</span><span class="n">cells</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"int64"</span><span class="p">)]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">mesh_lat</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="n">vmin</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">era5_mean</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">model_mean</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">min</span><span class="p">()))</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="n">vmax</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">era5_mean</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">model_mean</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">()))</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="n">span</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">bias</span><span class="p">),</span> <span class="mi">99</span><span class="p">))</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mf">6.6</span><span class="p">),</span> <span class="n">layout</span><span class="o">=</span><span class="s2">"constrained"</span><span class="p">)</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a><span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>    <span class="p">[</span>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>        <span class="p">(</span><span class="sa">f</span><span class="s2">"ERA5 </span><span class="si">{</span><span class="n">YEAR</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">era5_mean</span><span class="o">.</span><span class="n">values</span><span class="p">),</span>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>        <span class="p">(</span><span class="sa">f</span><span class="s2">"nextGEMS ngc4008 </span><span class="si">{</span><span class="n">YEAR</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">model_mean</span><span class="o">.</span><span class="n">values</span><span class="p">),</span>
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    <span class="p">],</span>
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>    <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a><span class="p">):</span>
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>    <span class="n">raster</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span> <span class="o">=</span> <span class="n">rasterize</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>    <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="n">ccrs</span><span class="o">.</span><span class="n">Robinson</span><span class="p">())</span>
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">coastlines</span><span class="p">(</span><span class="n">linewidth</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.3"</span><span class="p">)</span>
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_global</span><span class="p">()</span>
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>    <span class="n">mesh</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span>
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>        <span class="n">lon</span><span class="p">,</span>
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>        <span class="n">lat</span><span class="p">,</span>
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>        <span class="n">raster</span><span class="p">,</span>
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>        <span class="n">cmap</span><span class="o">=</span><span class="s2">"RdYlBu_r"</span><span class="p">,</span>
+<a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a>        <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span>
+<a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>        <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span>
+<a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a>        <span class="n">shading</span><span class="o">=</span><span class="s2">"auto"</span><span class="p">,</span>
+<a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>        <span class="n">transform</span><span class="o">=</span><span class="n">ccrs</span><span class="o">.</span><span class="n">PlateCarree</span><span class="p">(),</span>
+<a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>    <span class="p">)</span>
+<a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>    <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">shrink</span><span class="o">=</span><span class="mf">0.72</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"K"</span><span class="p">)</span>
+<a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>
+<a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a><span class="n">raster</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span> <span class="o">=</span> <span class="n">rasterize</span><span class="p">(</span><span class="n">bias</span><span class="p">)</span>
+<a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a><span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="n">ccrs</span><span class="o">.</span><span class="n">Robinson</span><span class="p">())</span>
+<a id="__codelineno-3-48" name="__codelineno-3-48" href="#__codelineno-3-48"></a><span class="n">ax</span><span class="o">.</span><span class="n">coastlines</span><span class="p">(</span><span class="n">linewidth</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.3"</span><span class="p">)</span>
+<a id="__codelineno-3-49" name="__codelineno-3-49" href="#__codelineno-3-49"></a><span class="n">ax</span><span class="o">.</span><span class="n">set_global</span><span class="p">()</span>
+<a id="__codelineno-3-50" name="__codelineno-3-50" href="#__codelineno-3-50"></a><span class="n">mesh</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span>
+<a id="__codelineno-3-51" name="__codelineno-3-51" href="#__codelineno-3-51"></a>    <span class="n">lon</span><span class="p">,</span>
+<a id="__codelineno-3-52" name="__codelineno-3-52" href="#__codelineno-3-52"></a>    <span class="n">lat</span><span class="p">,</span>
+<a id="__codelineno-3-53" name="__codelineno-3-53" href="#__codelineno-3-53"></a>    <span class="n">raster</span><span class="p">,</span>
+<a id="__codelineno-3-54" name="__codelineno-3-54" href="#__codelineno-3-54"></a>    <span class="n">cmap</span><span class="o">=</span><span class="s2">"RdBu_r"</span><span class="p">,</span>
+<a id="__codelineno-3-55" name="__codelineno-3-55" href="#__codelineno-3-55"></a>    <span class="n">vmin</span><span class="o">=-</span><span class="n">span</span><span class="p">,</span>
+<a id="__codelineno-3-56" name="__codelineno-3-56" href="#__codelineno-3-56"></a>    <span class="n">vmax</span><span class="o">=</span><span class="n">span</span><span class="p">,</span>
+<a id="__codelineno-3-57" name="__codelineno-3-57" href="#__codelineno-3-57"></a>    <span class="n">shading</span><span class="o">=</span><span class="s2">"auto"</span><span class="p">,</span>
+<a id="__codelineno-3-58" name="__codelineno-3-58" href="#__codelineno-3-58"></a>    <span class="n">transform</span><span class="o">=</span><span class="n">ccrs</span><span class="o">.</span><span class="n">PlateCarree</span><span class="p">(),</span>
+<a id="__codelineno-3-59" name="__codelineno-3-59" href="#__codelineno-3-59"></a><span class="p">)</span>
+<a id="__codelineno-3-60" name="__codelineno-3-60" href="#__codelineno-3-60"></a><span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"model minus reanalysis"</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-3-61" name="__codelineno-3-61" href="#__codelineno-3-61"></a><span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">shrink</span><span class="o">=</span><span class="mf">0.72</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"K"</span><span class="p">)</span>
+<a id="__codelineno-3-62" name="__codelineno-3-62" href="#__codelineno-3-62"></a>
+<a id="__codelineno-3-63" name="__codelineno-3-63" href="#__codelineno-3-63"></a><span class="n">ax_zonal</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<a id="__codelineno-3-64" name="__codelineno-3-64" href="#__codelineno-3-64"></a><span class="n">ax_zonal</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">zonal_bias</span><span class="p">,</span> <span class="n">ring_lat</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"#c62828"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.6</span><span class="p">)</span>
+<a id="__codelineno-3-65" name="__codelineno-3-65" href="#__codelineno-3-65"></a><span class="n">ax_zonal</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">"0.4"</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+<a id="__codelineno-3-66" name="__codelineno-3-66" href="#__codelineno-3-66"></a><span class="n">ax_zonal</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="mi">90</span><span class="p">,</span> <span class="mi">91</span><span class="p">,</span> <span class="mi">30</span><span class="p">))</span>
+<a id="__codelineno-3-67" name="__codelineno-3-67" href="#__codelineno-3-67"></a><span class="n">ax_zonal</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">-</span><span class="mi">90</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span>
+<a id="__codelineno-3-68" name="__codelineno-3-68" href="#__codelineno-3-68"></a><span class="n">ax_zonal</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"bias [K]"</span><span class="p">)</span>
+<a id="__codelineno-3-69" name="__codelineno-3-69" href="#__codelineno-3-69"></a><span class="n">ax_zonal</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"latitude [deg]"</span><span class="p">)</span>
+<a id="__codelineno-3-70" name="__codelineno-3-70" href="#__codelineno-3-70"></a><span class="n">ax_zonal</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"zonal mean bias"</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-3-71" name="__codelineno-3-71" href="#__codelineno-3-71"></a><span class="n">ax_zonal</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<a id="__codelineno-3-72" name="__codelineno-3-72" href="#__codelineno-3-72"></a>
+<a id="__codelineno-3-73" name="__codelineno-3-73" href="#__codelineno-3-73"></a><span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span>
+<a id="__codelineno-3-74" name="__codelineno-3-74" href="#__codelineno-3-74"></a>    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">YEAR</span><span class="si">}</span><span class="s2"> annual mean tas, ngc4008 against ERA5, level </span><span class="si">{</span><span class="n">level</span><span class="si">}</span><span class="s2">, "</span>
+<a id="__codelineno-3-75" name="__codelineno-3-75" href="#__codelineno-3-75"></a>    <span class="s2">"no regridding anywhere"</span><span class="p">,</span>
+<a id="__codelineno-3-76" name="__codelineno-3-76" href="#__codelineno-3-76"></a>    <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+<a id="__codelineno-3-77" name="__codelineno-3-77" href="#__codelineno-3-77"></a><span class="p">)</span>
+<a id="__codelineno-3-78" name="__codelineno-3-78" href="#__codelineno-3-78"></a>
+<a id="__codelineno-3-79" name="__codelineno-3-79" href="#__codelineno-3-79"></a><span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">"08_cross_dataset.png"</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">110</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">"tight"</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s2">"white"</span><span class="p">)</span>
+</code></pre></div>
+<figure>
+<p><img alt="Comparing two datasets without regridding" src="../../assets/examples/08_cross_dataset.png" /></p>
+<figcaption>
+<p>Comparing two datasets without regridding</p>
+</figcaption>
+</figure>
+<h2 id="what-is-left-to-be-careful-about">What is left to be careful about<a class="headerlink" href="#what-is-left-to-be-careful-about" title="Permanent link">&para;</a></h2>
+<p>The grid stopped being a problem, which means the remaining problems are
+the interesting ones, and they are all scientific:</p>
+<ul>
+<li><strong>The two <code>tas</code> fields are not the same thing.</strong> ERA5's is a diagnostic
+  from a reanalysis with data assimilation; the model's is a diagnostic
+  from a free-running simulation. A free run has no reason to reproduce a
+  particular year's weather, so day-to-day agreement is not expected and
+  only the climatology is worth reading.</li>
+<li><strong>One year is a short climatology.</strong> The bias field contains a real
+  model bias plus one realisation of internal variability, and the figure
+  cannot tell you which is which. Widen <code>YEAR</code> before drawing any
+  conclusion from it.</li>
+<li><strong>Sea ice and orography dominate the extremes.</strong> The largest values in
+  the difference map are where the two datasets disagree about what is at
+  the surface, not where they disagree about the atmosphere. That is worth
+  masking before quoting a number.</li>
+</ul>
+<p>Those are questions about climate, not about file formats, which is the
+point.</p>
+<hr />
+<p>Run it yourself: <a href="../../assets/examples/08_cross_dataset.py"><code>examples/08_cross_dataset.py</code></a></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../07_pyramid_levels/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Moving up and down the pyramid">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256l137.3-137.4c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Moving up and down the pyramid
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../high-level-access/" class="md-footer__link md-footer__link--next" aria-label="Next: High resolution data">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                High resolution data
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M247.1 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L179.2 256 41.9 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Need support? <a href="mailto:waterpark@support.dkrz.de">waterpark@support.dkrz.de</a> &nbsp;&middot;&nbsp; <a href="/newsletter/">Subscribe to the newsletter</a>
+
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+    <a href="mailto:waterpark@support.dkrz.de" target="_blank" rel="noopener" title="Support - waterpark@support.dkrz.de" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m20 8-8 5-8-5V6l8 5 8-5m0-2H4c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "navigation.footer", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+  
+  
+  
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+        <script src="../../assets/waterpark-chrome.js?h=f0592057"></script>
+      
+        <script src="../../assets/stac-browser-loader.js?h=071be45f"></script>
+      
+        <script src="../../assets/databrowser-loader.js?h=f6b0cdc2"></script>
+      
+        <script src="../../assets/waterpark-tree.js?h=e7f58276"></script>
+      
+        <script src="../../assets/waterpark-inspector.js?h=a46318fd"></script>
+      
+        <script src="../../assets/waterpark-newsletter.js?h=74563bac"></script>
+      
+        <script src="../../assets/waterpark-focus.js?h=d7bb1dde"></script>
+      
+        <script src="../../assets/header-navigation.js?h=bfaed7e4"></script>
+      
+        <script src="../../assets/waterpark-announce.js?h=8894ffb6"></script>
+      
+    
+
+  </body>
+</html>
