@@ -470,8 +470,18 @@ github() {
 }
 
 
+bundle_for_run() {
+  local id=$1 artifacts found
+  artifacts=$(github "/repos/$REPOSITORY/actions/runs/$id/artifacts") || return 2
+  found=$(jq -c --arg n "$ARTIFACT" 'first(.artifacts[]
+            | select(.name == $n and .expired == false)
+            | {artifact: .id, url: .archive_download_url})' <<<"$artifacts") || return 2
+  [ -n "$found" ] && [ "$found" != null ] || return 1
+  jq -c --argjson r "$id" '. + {run: $r}' <<<"$found" || return 2
+}
+
 newest_bundle() {
-  local event page runs="" entry id artifacts found
+  local event page runs="" entry id found
   for event in schedule push workflow_dispatch; do
     page=$(github "/repos/$REPOSITORY/actions/workflows/$WORKFLOW/runs?branch=$BRANCH&per_page=10&event=$event") ||
       return 2
@@ -482,16 +492,34 @@ newest_bundle() {
   while read -r entry; do
     [ -n "$entry" ] || continue
     id=$(jq -r .id <<<"$entry") || return 2
-    artifacts=$(github "/repos/$REPOSITORY/actions/runs/$id/artifacts") || return 2
-    found=$(jq -c --arg n "$ARTIFACT" 'first(.artifacts[]
-              | select(.name == $n and .expired == false)
-              | {artifact: .id, url: .archive_download_url})' <<<"$artifacts") || return 2
-    if [ -n "$found" ] && [ "$found" != null ]; then
-      jq -c --argjson r "$entry" '. + {run: $r.id}' <<<"$found" || return 2
+    if found=$(bundle_for_run "$id"); then
+      printf '%s\n' "$found"
       return 0
+    else
+      [ "$?" -eq 1 ] || return 2
     fi
   done <<<"$runs"
   return 1
+}
+
+discover_bundle() {
+  local prior_run=$1 attempt bundle run
+  for attempt in 1 2 3; do
+    bundle=$(newest_bundle) || return $?
+    run=$(jq -r .run <<<"$bundle") || return 2
+    [[ $run =~ ^[0-9]+$ ]] || return 2
+    if ! [[ $prior_run =~ ^[0-9]+$ ]] || [ "$run" -ge "$prior_run" ]; then
+      printf '%s\n' "$bundle"
+      return 0
+    fi
+    warn "discovery returned run $run older than accepted run $prior_run (attempt $attempt/3)"
+    [ "$attempt" -eq 3 ] || sleep 2
+  done
+
+  # A stale listing must not roll us back. Query the accepted run directly;
+  # refresh still validates the artifact and repairs missing local copies.
+  warn "checking accepted run $prior_run directly after stale discovery results"
+  bundle_for_run "$prior_run"
 }
 
 fetch() {
@@ -550,10 +578,11 @@ refresh() {
     { warn "no GitHub credential: set CATALOGUE_GITHUB_TOKEN, or CATALOGUE_APP_ID \
 and CATALOGUE_APP_KEY, in the env file next to $CONFIG"; return 1; }
 
-  bundle=$(newest_bundle) || {
+  prior_run=$(jq_state -r '.run // 0')
+  bundle=$(discover_bundle "$prior_run") || {
     case $? in
       2) warn "cannot ask GitHub what has been published; keeping what we have" ;;
-      *) warn "nothing has been published on $BRANCH yet" ;;
+      *) warn "no usable snapshot is available on $BRANCH; keeping what we have" ;;
     esac
     return 1
   }
@@ -565,7 +594,6 @@ and CATALOGUE_APP_KEY, in the env file next to $CONFIG"; return 1; }
 
   # Run ids only ever increase, so an older one means retention, a deleted
   # artifact or a failed lookup - never a newer release.
-  prior_run=$(jq_state -r '.run // 0')
   if [[ $prior_run =~ ^[0-9]+$ ]] && [ "$run" -lt "$prior_run" ]; then
     warn "run $run is older than the accepted run $prior_run; ignoring it"
     return 1
