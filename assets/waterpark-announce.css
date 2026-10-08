@@ -1,0 +1,83 @@
+/* Waterpark announcement banner.
+ *
+ * Material renders the .md-banner wrapper whenever the `announce` block is
+ * non-empty, and our block always contains the mount point, so the bar
+ * would show as an empty strip on every page. Keep it collapsed until the
+ * script has something to put in it.
+ */
+
+.md-banner:has([data-wp-announce]) {
+  display: none;
+}
+
+.md-banner:has([data-wp-announce]).wp-announce--visible {
+  display: block;
+  background: var(--md-default-bg-color);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  color: var(--md-default-fg-color);
+}
+
+.wp-announce__item {
+  --wp-a-accent: var(--md-primary-fg-color);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.wp-announce__item + .wp-announce__item {
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.wp-announce__item--warning { --wp-a-accent: #cc8800; }
+.wp-announce__item--outage { --wp-a-accent: var(--md-typeset-del-color, #d3302f); }
+
+.wp-announce__icon {
+  flex: 0 0 auto;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.06rem;
+  color: var(--wp-a-accent);
+}
+
+.wp-announce__icon svg { width: 100%; height: 100%; display: block; }
+
+.wp-announce__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wp-announce__link {
+  flex: 0 0 auto;
+  color: var(--wp-a-accent);
+  font-weight: 600;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.wp-announce__close {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  color: var(--md-default-fg-color--light);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.wp-announce__close svg { width: 100%; height: 100%; display: block; }
+.wp-announce__close:hover { color: var(--md-default-fg-color); }
+
+.wp-announce__close:focus-visible,
+.wp-announce__link:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+}
+
+@media screen and (max-width: 44.9375em) {
+  .wp-announce__item { flex-wrap: wrap; }
+  .wp-announce__link { margin-left: 1.55rem; }
+}
