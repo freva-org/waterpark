@@ -1,4 +1,4 @@
-<!-- Vendored from freva-org/grid-doctor@a96e532b (docs/shared/technical-decisions.md).
+<!-- Vendored from freva-org/grid-doctor@18d6ac7b (docs/shared/technical-decisions.md).
      Do not edit here: changes belong upstream and will be overwritten
      by scripts/sync_shared.py. -->
 
@@ -397,7 +397,14 @@ $$
 
 Every level is therefore identical to coarsening directly from the
 finest level, while each step stays a local reduction of 4 neighbouring
-cells.
+cells. `create_healpix_pyramid` keeps these sums and counts internally while
+building its chain.
+
+!!! note "Be careful with manually chained mean coarsening"
+    Chaining averages works for complete fields. With missing data,
+    intermediate cells can represent different numbers of finest-level
+    cells, but the next average weights them equally. Coarsen directly
+    from `finest`, or use `create_healpix_pyramid`, instead.
 
 ### Mode coarsening (categorical fields)
 
