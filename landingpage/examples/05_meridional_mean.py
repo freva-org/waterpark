@@ -124,6 +124,7 @@ ax_mean.legend(frameon=False)
 
 fig.tight_layout()
 fig.savefig("05_meridional_mean.png", dpi=110, bbox_inches="tight", facecolor="white")
+plt.show()
 
 # %% [figure]
 

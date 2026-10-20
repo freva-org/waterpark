@@ -1,20 +1,54 @@
-# Waterpark — HEALPix Data Hub
+---
+title: Waterpark
+description: The HEALPix data hub on S3 - reanalyses, climate model output, campaign data and satellite products on one equal-area grid, ready to read from anywhere.
+template: home.html
+hide:
+  - navigation
+  - toc
+  - footer
+---
 
-**Reanalyses, climate model output, campaign data and satellite products, all on
-the same grid: the data pool, with slides to every level. Pack your floaties!**
+<div class="portal-hero-row" data-columns="two" data-aside="wide">
+<div class="portal-hero-lead">
+<section class="portal-hero">
+<p class="portal-eyebrow">The HEALPix data hub on S3</p>
+<h1 class="portal-hero-heading">Every dataset on one grid. Read only what you need.</h1>
+<p class="portal-hero-text">Reanalyses, climate model output, campaign data and satellite products, remapped once onto the same equal-area HEALPix grid and served as multi-resolution Zarr pyramids over S3. Nothing to download and nothing to regrid: explore at a coarse level, analyse at a fine one, and compare datasets cell by cell.</p>
+<div class="portal-hero-actions">
+<a class="portal-button portal-button-primary" href="databrowser/">Find data</a>
+<a class="portal-button" href="stac-browser/">Browse as STAC</a>
+<a class="portal-button" href="examples/">Learn by example</a>
+<a class="portal-button" data-wp-notebook="lab">Open the notebook</a>
+</div>
+</section>
+</div>
+<div class="portal-hero-aside">
+<section class="portal-dataset-tree-block" data-portal-tree-panel>
+<div class="portal-dataset-tree-bar">
+<div class="portal-dataset-tree-head">
+<h2 class="portal-block-heading">Currently available datasets</h2>
+<p class="portal-dataset-tree-summary">Collections published on the hub. Expand a row for its endpoint, an example read, and where the project is documented.</p>
+</div>
+<button type="button" class="portal-tree-expand" data-portal-tree-expand aria-expanded="false" aria-label="Maximize the dataset browser">
+<svg class="portal-tree-expand-icon" data-icon="grow" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-6.5 6.5M10 4H4v6M4 4l6.5 6.5M14 20h6v-6M20 20l-6.5-6.5M10 20H4v-6M4 20l6.5-6.5"></path></svg>
+<svg class="portal-tree-expand-icon" data-icon="shrink" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4l-6.5 6.5M13.5 4.5v6h6M4 4l6.5 6.5M10.5 4.5v6h-6M20 20l-6.5-6.5M13.5 19.5v-6h6M4 20l6.5-6.5M10.5 19.5v-6h-6"></path></svg>
+<span class="portal-tree-expand-text">Maximize</span>
+</button>
+</div>
+<div class="portal-dataset-tree" data-wp-dataset-tree>
+<noscript><p class="portal-note">The dataset browser needs JavaScript. The same holdings are in the <a href="stac-browser/">STAC Browser</a>.</p></noscript>
+</div>
+</section>
+</div>
+</div>
+
+<div class="md-typeset wp-home-rest" markdown>
 
 ![MODIS SST on HEALPix level 10](assets/modis-aqua.png){ width="600" .img-center }
 
 /// caption
 Sea surface temperature seen by MODIS AQUA, remapped to HEALPix level 10.
 ///
-
-<div class="wp" data-waterpark
-     data-mode="live"
-     data-endpoint="https://s3.waterpark.dkrz.de"
-     data-buckets="cmip6,cordex,dyamond,earthcare,eerie,era5,icdc,icon-dream,nextgems,orchestra,palmod"
-     data-meta="assets/waterpark-datasets.json"></div>
-
 
 ### Cross dataset comparison is easy and intuitive, no regridding:
 
@@ -103,3 +137,5 @@ from hierarchical coarsening rather than from remapping again.
 A prototype. The interface is meant to stay stable, but data still comes from
 DKRZ file systems through an S3-compatible gateway rather than dedicated object
 storage.
+
+</div>

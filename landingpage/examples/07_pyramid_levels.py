@@ -121,6 +121,7 @@ fig.colorbar(mesh, ax=fig.axes, orientation="horizontal", shrink=0.5,
 fig.suptitle("Coarsening is an average of four nested cells", fontsize=12)
 
 fig.savefig("07_pyramid_levels.png", dpi=110, bbox_inches="tight", facecolor="white")
+plt.show()
 
 # %% [figure]
 

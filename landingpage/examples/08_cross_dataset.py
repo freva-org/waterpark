@@ -183,6 +183,7 @@ fig.suptitle(
 )
 
 fig.savefig("08_cross_dataset.png", dpi=110, bbox_inches="tight", facecolor="white")
+plt.show()
 
 # %% [figure]
 

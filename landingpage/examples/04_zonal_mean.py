@@ -113,6 +113,7 @@ ax_counts.grid(alpha=0.3, axis="x")
 ax_counts.set_title(f"{rings.max() + 1} rings")
 
 fig.savefig("04_zonal_mean.png", dpi=110, bbox_inches="tight", facecolor="white")
+plt.show()
 
 # %% [figure]
 

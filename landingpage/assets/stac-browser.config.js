@@ -1,15 +1,19 @@
+const here = (path) => new URL(path, import.meta.url).href;
+
 export default {
     catalogUrl: "https://freva.dkrz.de/api/freva-nextgen/stacapi/product/?visible_collections=cmip6,dyamond,eerie,icdc,icon-dream,nextgems,obs,palmod,reanalysis-healpix",
 
     // Header
     catalogTitle: "STAC Browser",
-    catalogImage: "https://waterpark.dkrz.de/assets/logo-512.png",
+    catalogImage: here("logo-512.png"),
 
     // Footer
     footerLinks: [
       { label: "Freva", url: "https://www.freva.dkrz.de" },
       { label: "DKRZ", url: "https://www.dkrz.de" }
     ],
+
+    allowedBasemapOrigins: ["https://tile.openstreetmap.org"],
 
     // Landing content (root catalog only)
     preprocessSTAC(stac, state) {
@@ -40,7 +44,7 @@ export default {
 
         stac.title = "AI-/Analysis-Ready Cloud Optimized";
         stac.description = [
-          "![what is waterpark](/assets/stacapi_anim.gif)",
+          `![what is waterpark](${here("stacapi_anim.gif")})`,
           "",
           "> Explore the HEALPix data hub with our STAC Browser."
         ].join("\n");

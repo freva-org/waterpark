@@ -59,13 +59,13 @@ services:
       - ../landingpage/assets:/work/assets:ro,z
       - ../landingpage/scripts:/work/scripts:ro,z
       - ../landingpage/mkdocs.yml:/work/mkdocs.yml:ro,z
+      - ../landingpage:/host:ro,z
       - docs-build:/work/.build
-      - npm-cache:/root/.npm
     environment:
       GRID_DOCTOR_ROOT: /work
       WATERPARK_BASE_PATH: /
+      WATERPARK_PREPARED: /host/.prepared
       WP_LIST_UUID: "21403ce5-ad9a-439f-a132-f0ca409db1f7"
-      SKIP_ASSET_BUILD: "${SKIP_ASSET_BUILD:-0}"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000').read()"]
       interval: 2s
@@ -145,5 +145,4 @@ services:
 
 volumes:
   docs-build:
-  npm-cache:
   postgres-data:

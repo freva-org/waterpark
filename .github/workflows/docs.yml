@@ -53,7 +53,9 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: landingpage/package-lock.json
 
       - name: Disable unused Google Chrome repository
         shell: bash
@@ -82,6 +84,22 @@ jobs:
         # are owned by grid-doctor; a local change would be silently
         # reverted by the next sync.
         run: tox -e shared-check
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            landingpage/.prepared
+            landingpage/.cache
+            landingpage/.python-wheels
+          key: prepared-${{ hashFiles('landingpage/package-lock.json', 'landingpage/scripts/prepare.mjs', 'landingpage/scripts/build_examples.py', 'landingpage/web/**', 'landingpage/examples/*.py', 'landingpage/notebooks/**', 'landingpage/assets/waterpark-datasets.json') }}
+
+      - name: Prepare the Freva parts
+        env:
+          GH_TOKEN: ${{ secrets.HEALPIX_GEO_TOKEN || github.token }}
+        run: |
+          npm ci --no-audit --no-fund
+          ./scripts/fetch-wheels.sh || echo "no healpix-geo wheel: the examples that import it will not run in the browser"
+          node scripts/prepare.mjs
 
       - name: Build
         run: tox -e docs

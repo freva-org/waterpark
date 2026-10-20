@@ -104,6 +104,7 @@ ax.grid(alpha=0.3)
 ax.legend(frameon=False, loc="upper left", fontsize=9)
 
 fig.savefig("02_global_mean.png", dpi=110, bbox_inches="tight", facecolor="white")
+plt.show()
 
 # %% [figure]
 

@@ -6,10 +6,7 @@ hide:
 ---
 
 <!--
-  An ordinary page. scripts/build_databrowser_docs.py substitutes the mount
-  div into the marker below, because the bundle's file names carry content
-  hashes that are only known once npm has run. Everything else here is
-  hand-written: edit it freely, and keep the marker on a line of its own.
+  An ordinary page: web/site.js mounts the application in the element below.
 
   The browser's behaviour is configured in assets/databrowser.config.js, not
   here. The app is full-bleed, so the sidebar is worth getting out of the
@@ -24,4 +21,4 @@ hide:
 
 -->
 
-<!-- databrowser-mount -->
+<div class="waterpark-databrowser-wrapper"><div id="databrowser-mount"></div></div>
