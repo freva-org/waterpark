@@ -324,7 +324,7 @@ jobs:
             --scan-concurrency 64 \
             --n-procs 2 \
             --fail-under 1
-          pg_dump -d waterpark --schema="$schema" --no-owner --no-privileges |
+          docker exec "${{ job.services.postgres.id }}" pg_dump -U postgres -d waterpark --schema="$schema" --no-owner --no-privileges |
             gzip -9 > "out/$DATASET.sql.gz"
 
       - name: Load the dump the way the host will
