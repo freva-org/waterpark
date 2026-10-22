@@ -314,6 +314,8 @@ jobs:
           PGPASSWORD: waterpark
         run: |
           set -euo pipefail
+          sudo apt-get install -y -qq postgresql-client-16 >/dev/null
+          export PATH=/usr/lib/postgresql/16/bin:$PATH
           schema="${DATASET//-/_}"
           metadata-crawler add "postgresql://postgres:waterpark@localhost:5432/waterpark" \
             --config-file catalogue/schema.toml \
