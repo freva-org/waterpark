@@ -314,10 +314,6 @@ jobs:
           PGPASSWORD: waterpark
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client-16
-          export PATH=/usr/lib/postgresql/16/bin:$PATH
-          pg_dump --version
           schema="${DATASET//-/_}"
           metadata-crawler add "postgresql://postgres:waterpark@localhost:5432/waterpark" \
             --config-file catalogue/schema.toml \
@@ -328,7 +324,7 @@ jobs:
             --scan-concurrency 64 \
             --n-procs 2 \
             --fail-under 1
-          pg_dump -d waterpark --schema="$schema" --no-owner --no-privileges |
+          docker exec "${{ job.services.postgres.id }}" pg_dump -U postgres -d waterpark --schema="$schema" --no-owner --no-privileges |
             gzip -9 > "out/$DATASET.sql.gz"
 
       - name: Load the dump the way the host will
