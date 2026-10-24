@@ -106,6 +106,7 @@ fig.colorbar(
 ax.set_title("ERA5 monthly mean tas, July 2021, HEALPix level 7")
 
 fig.savefig("01_first_map.png", dpi=110, bbox_inches="tight", facecolor="white")
+plt.show()
 
 # %% [figure]
 

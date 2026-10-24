@@ -116,6 +116,7 @@ The docs site has its own justfile in `landingpage/`, usable on its own
 (`cd landingpage && just serve`) or from here as a module:
 
 ```sh
+just site::prepare   # the Freva parts (Python, notebook, tree, STAC and Data Browser) into landingpage/.prepared
 just site::serve     # docs alone on :8000, no listmonk or mailbox
 just site::build     # strict build into landingpage/site
 ```
@@ -136,11 +137,9 @@ proxy, docs, listmonk and the mailbox, and what is actually in `.build/data`.
 - **No log output from the API.** The application logger defaults to
   `ERROR`, which hides every "verification sent" and "address rejected"
   line. The stack sets `VERBOSITY=2` (INFO); `3` is DEBUG.
-- **The STAC or data browser page 404s.** Those two pages are generated at
-  container start by scripts that clone and run npm. The step is
-  deliberately non-fatal so the rest of the site still works when it
-  breaks. `SKIP_ASSET_BUILD=1 just dev` skips it entirely, which confirms
-  whether that is what is failing.
+- **No Python, notebook, tree, STAC or Data Browser.** Those come from
+  `landingpage/.prepared/`: run `just site::prepare` (Node 22.12 or newer),
+  then rebuild or restart the docs service.
 
 ## Content
 

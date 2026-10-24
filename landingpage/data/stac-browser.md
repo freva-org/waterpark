@@ -6,10 +6,7 @@ hide:
 ---
 
 <!--
-  An ordinary page. scripts/build_stac_browser_docs.py substitutes the mount
-  div into the marker below, because the bundle's file names carry content
-  hashes that are only known once npm has run. Everything else here is
-  hand-written: edit it freely, and keep the marker on a line of its own.
+  An ordinary page: web/site.js mounts the application in the element below.
 
   The browser's behaviour is configured in assets/stac-browser.config.js, not
   here. The app is full-bleed, so the sidebar is worth getting out of the
@@ -25,4 +22,4 @@ hide:
 
 -->
 
-<!-- stac-browser-mount -->
+<div class="waterpark-stac-wrapper"><div id="stac-browser-mount"></div></div>

@@ -62,9 +62,9 @@ export default {
 
   // Brand
   brand: {
-    title: "Freva Data-Browser",
-    mark: "≈",
-    description: "Search the HEALPix data hub via the freva-nextgen API.",
+    title: "Data Browser",
+    showMark: false,
+    description: "",
   },
 
 
@@ -72,6 +72,7 @@ export default {
   // The widget's OWN day/night toggle is disabled
   features: {
     themeToggle: false,
+    footer: false,
   },
   theme: {
     both: {

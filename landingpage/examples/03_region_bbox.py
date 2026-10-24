@@ -180,6 +180,7 @@ ax.set_title(
 )
 
 fig.savefig("03_region_bbox.png", dpi=110, bbox_inches="tight", facecolor="white")
+plt.show()
 
 # %% [figure]
 

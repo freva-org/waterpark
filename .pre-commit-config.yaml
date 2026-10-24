@@ -61,9 +61,7 @@ repos:
         # Scoped to what is currently clean, so the hook can be trusted
         # rather than routinely skipped.
         #
-        # Left out for now, both worth a separate pass:
-        #   landingpage/scripts/build_*_docs.py  10 findings, one of them
-        #     an F841 that looks like a real bug (`npm` computed, unused)
+        # Left out for now, worth a separate pass:
         #   landingpage/scripts/<dataset>/       one-off conversion recipes
         #     with long lines and two F821 undefined names
         files: ^(rest-api/.*\.py|landingpage/scripts/(sync_shared|refresh_buckets)\.py)$
@@ -93,6 +91,7 @@ repos:
         exclude: |
           (?x)^(
             .*\.(svg|ico|lock|ipynb)|
+            .*/package-lock\.json|
             landingpage/assets/.*\.json|
             landingpage/scripts/[^/]+/.*|
             landingpage/shared/.*

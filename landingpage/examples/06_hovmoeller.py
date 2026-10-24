@@ -111,6 +111,7 @@ fig.colorbar(mesh, ax=ax_anom, pad=0.02, label="K")
 
 fig.tight_layout()
 fig.savefig("06_hovmoeller.png", dpi=110, bbox_inches="tight", facecolor="white")
+plt.show()
 
 # %% [figure]
 

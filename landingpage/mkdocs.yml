@@ -46,6 +46,7 @@ theme:
 # entry so asset changes reach readers without a hard reload.
 hooks:
   - scripts/cache_bust.py
+  - scripts/hooks.py
 
 plugins:
 
@@ -83,6 +84,11 @@ plugins:
               url: /examples/07_pyramid_levels/
             - text: Comparing two datasets without regridding
               url: /examples/08_cross_dataset/
+
+        - title: Notebook
+          links:
+            - text: Open the notebook
+              url: /notebook/lab/index.html
 
         - title: Tips and tricks
           links:
@@ -162,7 +168,7 @@ markdown_extensions:
 
 extra_css:
   - assets/styles.css
-  - assets/waterpark-tree.css
+  - assets/freva.css
   - assets/stac-browser.css
   - assets/databrowser.css
   - assets/waterpark-newsletter.css
@@ -172,10 +178,6 @@ extra_css:
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
   - assets/waterpark-chrome.js
-  - assets/stac-browser-loader.js
-  - assets/databrowser-loader.js
-  - assets/waterpark-tree.js
-  - assets/waterpark-inspector.js
   - assets/waterpark-newsletter.js
   - assets/waterpark-focus.js
   - assets/header-navigation.js

@@ -8,6 +8,11 @@
   a workflow run plus a rebuild.
 #}
 
+{% block extrahead %}
+  {{ super() }}
+  {% if wp_ui_css %}<link rel="stylesheet" href="{{ wp_ui_css }}">{% endif %}
+{% endblock %}
+
 {# Mount point only. assets/waterpark-announce.js fills it from
    /api/announcements, which nginx serves straight off a JSON file on the
    host, and hides the bar when there is nothing to show or the file is
@@ -96,4 +101,10 @@
     <script>window.WP_LIST_UUID = {{ config.extra.list_uuid | tojson }};</script>
   {% endif %}
   {{ super() }}
+  {% if wp_site %}
+    <div id="portal-overlay-root" class="portal-overlay-root"></div>
+    {% if wp_playground %}<div class="portal-python-config" hidden data-portal-python-playground="{{ wp_playground }}"></div>{% endif %}
+    <script type="application/json" id="wp-site">{{ wp_site }}</script>
+    <script type="module" src="{{ wp_site_script }}"></script>
+  {% endif %}
 {% endblock %}

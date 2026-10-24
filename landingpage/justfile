@@ -23,6 +23,13 @@ default:
 # WP_API_BASE reaches mkdocs through `!ENV` and ends up in the rendered
 # HTML. It must be empty for anything that gets published.
 
+# Build the Freva parts (Python, notebook, tree, STAC and Data Browser) into .prepared/
+[group('docs')]
+prepare *args:
+    [ -d node_modules ] || npm ci --no-audit --no-fund
+    ./scripts/fetch-wheels.sh || echo "no healpix-geo wheel: the examples that import it will not run in the browser"
+    node scripts/prepare.mjs {{ args }}
+
 # Serve the docs at localhost:8000 with live reload
 [group('docs')]
 serve:
@@ -85,5 +92,5 @@ examples-check:
 # Remove build output and local state
 [group('docs')]
 clean:
-    rm -rf .build site site-data "{{ state_dir }}"
+    rm -rf .build site site-data .prepared "{{ state_dir }}"
     @echo "cleaned"
