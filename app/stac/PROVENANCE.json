@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "kind": "stac-browser-provenance",
+  "preparedBy": "@freva-org/stac-browser prepare",
+  "recipeVersion": "2609.4.0",
+  "recipeDigest": "sha256:b2575753036d21abd70651d59942b9f042967e79f1b23580b972dc79e8dc733c",
+  "upstream": {
+    "repository": "https://github.com/radiantearth/stac-browser.git",
+    "tag": "v5.1.0",
+    "commit": "c78b78f3434fdd34d4192f7044194dae6a15172d",
+    "lockfileDigest": "sha256:65215464a28a0cfc982fd9ef6ce1b087ee10347780d59bbf236a4ff23837b7c2",
+    "licenseSpdx": "ISC",
+    "licenseDigest": "sha256:1e8db07d8b22c7259397a6395be7c939bf02b178c601ae4326efa13d929bca86"
+  },
+  "patches": [
+    {
+      "name": "0001-mount-into-the-portal-host-element.patch",
+      "digest": "sha256:9ba41efed23399dd6ad8e0c88c689492e661c90632bcfe3054da3771d7eac044",
+      "affects": "integration",
+      "owner": "freva-data-portal maintainers"
+    },
+    {
+      "name": "0002-expose-init-for-re-entry.patch",
+      "digest": "sha256:5d3bd8d40329cc02c5ae69779d0f235412717d9eae26a79d1c214d34454b74e5",
+      "affects": "integration",
+      "owner": "freva-data-portal maintainers"
+    },
+    {
+      "name": "0003-follow-the-host-theme.patch",
+      "digest": "sha256:cf490a322f0f79b2471ddbac2731373e2d50c630df316f0d5c5c9646b6696f9c",
+      "affects": "rendering",
+      "owner": "freva-data-portal maintainers"
+    },
+    {
+      "name": "0004-do-not-scroll-lock-the-host-document.patch",
+      "digest": "sha256:c4552ae0fe9d1d73aa73a1972de425956e87099d6ecb2f04f6e78fa727122f29",
+      "affects": "integration",
+      "owner": "freva-data-portal maintainers"
+    },
+    {
+      "name": "0005-open-the-validation-report-in-a-new-tab.patch",
+      "digest": "sha256:72e7cd838e807c059eba6ad92193cdb0fe93aa68ac318b6094c1141f75379cc0",
+      "affects": "integration",
+      "owner": "freva-data-portal maintainers"
+    },
+    {
+      "name": "0006-teleport-the-example-code-modal-into-the-embed.patch",
+      "digest": "sha256:0bcc56b0222832d61e1e1b5d1cbb05f2dcac614997a4f8bd751f732181ea2f0b",
+      "affects": "integration",
+      "owner": "freva-data-portal maintainers"
+    },
+    {
+      "name": "0007-open-the-catalogue-description-expanded.patch",
+      "digest": "sha256:64567f9f827e5b8d16b45a26b7a4ee0fbdb6108b81b21860963f34d9da3c02ad",
+      "affects": "rendering",
+      "owner": "freva-data-portal maintainers"
+    },
+    {
+      "name": "0008-ask-before-fetching-a-third-party-basemap.patch",
+      "digest": "sha256:300de3057acf09e85dcc4493b28386fa6e51b4383d972f7df7f5a39b3580a8f6",
+      "affects": "rendering",
+      "owner": "freva-data-portal maintainers"
+    },
+    {
+      "name": "0009-place-the-portal-introduction-in-the-catalogue-column.patch",
+      "digest": "sha256:4506ab27bcfea05644eb51f9eaee17bd75a02c943f756643764f8ff3bd4f59e6",
+      "affects": "presentation",
+      "owner": "freva-data-portal maintainers"
+    }
+  ],
+  "toolchain": {
+    "node": "22.23.3",
+    "npm": "10.9.9",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "patchedSourceDigest": "sha256:66cc7f9bf9d3ea060d8efdb8377d9460eaef9cd87ef3e62e8643d8fdcb90ee1b",
+  "build": {
+    "mode": "minimal",
+    "env": {
+      "DYNAMIC_CONFIG": "true",
+      "NODE_ENV": "production",
+      "SB_pathPrefix": "/stac/",
+      "SB_historyMode": "hash",
+      "SB_catalogTitle": "STAC Browser"
+    }
+  },
+  "cacheKey": "sha256:3d45aad4b01f3f0e1656a14db5370472676b7810d012c85d78668d14bfec6001",
+  "cacheKeyParts": [
+    "commit=c78b78f3434fdd34d4192f7044194dae6a15172d",
+    "lockfile=sha256:65215464a28a0cfc982fd9ef6ce1b087ee10347780d59bbf236a4ff23837b7c2",
+    "patch0=0001-mount-into-the-portal-host-element.patch:sha256:9ba41efed23399dd6ad8e0c88c689492e661c90632bcfe3054da3771d7eac044",
+    "patch1=0002-expose-init-for-re-entry.patch:sha256:5d3bd8d40329cc02c5ae69779d0f235412717d9eae26a79d1c214d34454b74e5",
+    "patch2=0003-follow-the-host-theme.patch:sha256:cf490a322f0f79b2471ddbac2731373e2d50c630df316f0d5c5c9646b6696f9c",
+    "patch3=0004-do-not-scroll-lock-the-host-document.patch:sha256:c4552ae0fe9d1d73aa73a1972de425956e87099d6ecb2f04f6e78fa727122f29",
+    "patch4=0005-open-the-validation-report-in-a-new-tab.patch:sha256:72e7cd838e807c059eba6ad92193cdb0fe93aa68ac318b6094c1141f75379cc0",
+    "patch5=0006-teleport-the-example-code-modal-into-the-embed.patch:sha256:0bcc56b0222832d61e1e1b5d1cbb05f2dcac614997a4f8bd751f732181ea2f0b",
+    "patch6=0007-open-the-catalogue-description-expanded.patch:sha256:64567f9f827e5b8d16b45a26b7a4ee0fbdb6108b81b21860963f34d9da3c02ad",
+    "patch7=0008-ask-before-fetching-a-third-party-basemap.patch:sha256:300de3057acf09e85dcc4493b28386fa6e51b4383d972f7df7f5a39b3580a8f6",
+    "patch8=0009-place-the-portal-introduction-in-the-catalogue-column.patch:sha256:4506ab27bcfea05644eb51f9eaee17bd75a02c943f756643764f8ff3bd4f59e6",
+    "recipe=2609.4.0",
+    "procedure=sha256:6aa6012f1d6efdfddaa5c25b2612bd4d0f361aa669220645091ecf9432079ddf",
+    "build=minimal",
+    "node=22",
+    "npm=10"
+  ],
+  "materials": {
+    "treeDigest": "sha256:ddecc957e44d580c0aa62847f75a5fe2acd5d77556b3106b695fa44ccc363adf",
+    "fileCount": 667,
+    "entry": "assets/index-C8evNBCs.js",
+    "styles": [
+      "assets/index-h3TzGqWV.css"
+    ]
+  },
+  "adapterContract": {
+    "schemaVersion": 1,
+    "digest": "sha256:cec2b20f6936b3230990bee026f809b8dbd8af8abd710b8ffc2a66c97cffe605"
+  }
+}

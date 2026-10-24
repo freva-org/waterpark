@@ -1,0 +1,67 @@
+/*
+ * Focus mode for the two embedded browsers.
+ *
+ * Both pages used to set `hide: navigation` in their front matter. That is a
+ * build-time decision: Material's template simply never emits the sidebar, so
+ * nothing client-side can bring it back, and a reader who landed on the page
+ * had no way out of it. With the markup present, the same full-bleed view
+ * becomes a class on <body> that the reader turns on and off, and it sticks
+ * across pages through localStorage.
+ *
+ * Only the primary sidebar is involved. `toc.integrate` is on, so the table
+ * of contents is folded into it rather than living in a second column, which
+ * is why one toggle covers both.
+ */
+
+/* The button only exists on the pages whose loader claimed the body. */
+.wp-focus-bar {
+  display: none;
+}
+body.waterpark-databrowser-page .wp-focus-bar,
+body.waterpark-stac-page .wp-focus-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.35rem 0.6rem 0;
+}
+
+.wp-focus-toggle {
+  display: inline-flex;
+  gap: 0.35em;
+  align-items: center;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.2rem;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.68rem;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+}
+.wp-focus-toggle:hover {
+  color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+}
+.wp-focus-toggle svg {
+  width: 0.9em;
+  height: 0.9em;
+  fill: currentColor;
+}
+
+/* Focus on: drop the sidebar and reclaim its column. The header stays, so
+   the tab bar is still there and the reader is never stranded. */
+body.wp-focus .md-sidebar--primary,
+body.wp-focus .md-sidebar--secondary {
+  display: none;
+}
+body.wp-focus .md-main__inner {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Mobile already hides the sidebar behind the drawer, so the toggle would
+   only take away the drawer button. */
+@media screen and (max-width: 76.1875em) {
+  body.waterpark-databrowser-page .wp-focus-bar,
+  body.waterpark-stac-page .wp-focus-bar {
+    display: none;
+  }
+}

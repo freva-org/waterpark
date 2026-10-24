@@ -1,0 +1,511 @@
+{
+  "jupyter-config-data": {
+    "appName": "Waterpark Notebook",
+    "appUrl": "./lab",
+    "appVersion": "0.8.5",
+    "baseUrl": "./",
+    "contentsAllJsonFile": "all.json",
+    "defaultKernelName": "freva-python",
+    "disabledExtensions": [
+      "@jupyterlab/apputils-extension:settings",
+      "@jupyterlite/application-extension:service-worker-manager",
+      "@jupyterlab/javascript-extension",
+      "@jupyterlab/vega5-extension",
+      "@jupyter-notebook/notebook-extension:tab-icon",
+      "@jupyterlite/application-extension:logo"
+    ],
+    "exposeAppInBrowser": false,
+    "faviconUrl": "./favicon.ico",
+    "federated_extensions": [
+      {
+        "extension": "./extension",
+        "load": "static/remoteEntry.9ed4a99c33b6bfff.js",
+        "name": "@freva-org/jupyterlite-freva-data",
+        "style": "./style"
+      },
+      {
+        "extension": "./extension",
+        "load": "static/remoteEntry.931254ee86b53e21.js",
+        "mimeExtension": "./mimeExtension",
+        "name": "@freva-org/jupyterlite-freva-kernel"
+      }
+    ],
+    "fileTypes": {
+      "avi": {
+        "extensions": [
+          ".avi"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "video/x-msvideo"
+        ],
+        "name": "avi"
+      },
+      "css": {
+        "extensions": [
+          ".css"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "text/css"
+        ],
+        "name": "css"
+      },
+      "csv": {
+        "extensions": [
+          ".csv"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "text/csv"
+        ],
+        "name": "csv"
+      },
+      "fasta": {
+        "extensions": [
+          ".fasta"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "text/plain"
+        ],
+        "name": "fasta"
+      },
+      "flac": {
+        "extensions": [
+          ".flac"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "audio/flac"
+        ],
+        "name": "flac"
+      },
+      "geojson": {
+        "extensions": [
+          ".geojson"
+        ],
+        "fileFormat": "json",
+        "mimeTypes": [
+          "application/geo+json"
+        ],
+        "name": "geojson"
+      },
+      "gzip": {
+        "extensions": [
+          ".tgz",
+          ".gz",
+          ".gzip"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "application/gzip"
+        ],
+        "name": "gzip"
+      },
+      "html": {
+        "extensions": [
+          ".html"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "text/html"
+        ],
+        "name": "html"
+      },
+      "ical": {
+        "extensions": [
+          ".ical",
+          ".ics",
+          ".ifb",
+          ".icalendar"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "text/calendar"
+        ],
+        "name": "ical"
+      },
+      "ico": {
+        "extensions": [
+          ".ico"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "image/x-icon"
+        ],
+        "name": "ico"
+      },
+      "ipynb": {
+        "extensions": [
+          ".ipynb"
+        ],
+        "fileFormat": "json",
+        "mimeTypes": [
+          "application/x-ipynb+json"
+        ],
+        "name": "ipynb"
+      },
+      "jpeg": {
+        "extensions": [
+          ".jpeg",
+          ".jpg"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "image/jpeg"
+        ],
+        "name": "jpeg"
+      },
+      "js": {
+        "extensions": [
+          ".js",
+          ".mjs"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "application/javascript"
+        ],
+        "name": "js"
+      },
+      "jsmap": {
+        "extensions": [
+          ".map"
+        ],
+        "fileFormat": "json",
+        "mimeTypes": [
+          "application/json"
+        ],
+        "name": "jsmap"
+      },
+      "json": {
+        "extensions": [
+          ".json"
+        ],
+        "fileFormat": "json",
+        "mimeTypes": [
+          "application/json"
+        ],
+        "name": "json"
+      },
+      "jupyterlab_workspace": {
+        "extensions": [
+          ".jupyterlab-workspace"
+        ],
+        "fileFormat": "json",
+        "mimeTypes": [
+          "application/json"
+        ],
+        "name": "jupyterlab_workspace"
+      },
+      "manifest": {
+        "extensions": [
+          ".manifest"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "text/cache-manifest"
+        ],
+        "name": "manifest"
+      },
+      "md": {
+        "extensions": [
+          ".md",
+          ".markdown"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "text/markdown"
+        ],
+        "name": "md"
+      },
+      "mkv": {
+        "extensions": [
+          ".mkv"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "video/x-matroska"
+        ],
+        "name": "mkv"
+      },
+      "mov": {
+        "extensions": [
+          ".mov"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "video/quicktime"
+        ],
+        "name": "mov"
+      },
+      "mp3": {
+        "extensions": [
+          ".mp3"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "audio/mpeg"
+        ],
+        "name": "mp3"
+      },
+      "mp4": {
+        "extensions": [
+          ".mp4"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "video/mp4"
+        ],
+        "name": "mp4"
+      },
+      "ogg": {
+        "extensions": [
+          ".ogg"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "audio/ogg"
+        ],
+        "name": "ogg"
+      },
+      "pdf": {
+        "extensions": [
+          ".pdf"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "application/pdf"
+        ],
+        "name": "pdf"
+      },
+      "plain": {
+        "extensions": [
+          ".txt"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "text/plain"
+        ],
+        "name": "plain"
+      },
+      "png": {
+        "extensions": [
+          ".png"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "image/png"
+        ],
+        "name": "png"
+      },
+      "py": {
+        "extensions": [
+          ".py"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "text/x-python",
+          "application/x-python-code"
+        ],
+        "name": "py"
+      },
+      "svg": {
+        "extensions": [
+          ".svg"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "image/svg+xml"
+        ],
+        "name": "svg"
+      },
+      "toml": {
+        "extensions": [
+          ".toml"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "application/toml"
+        ],
+        "name": "toml"
+      },
+      "vue": {
+        "extensions": [
+          ".vue"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "text/plain"
+        ],
+        "name": "vue"
+      },
+      "wasm": {
+        "extensions": [
+          ".wasm"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "application/wasm"
+        ],
+        "name": "wasm"
+      },
+      "wav": {
+        "extensions": [
+          ".wav"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "audio/wav"
+        ],
+        "name": "wav"
+      },
+      "webm": {
+        "extensions": [
+          ".webm"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "video/webm"
+        ],
+        "name": "webm"
+      },
+      "wheel": {
+        "extensions": [
+          ".whl"
+        ],
+        "fileFormat": "base64",
+        "mimeTypes": [
+          "octet/stream",
+          "application/x-wheel+zip"
+        ],
+        "name": "wheel"
+      },
+      "xml": {
+        "extensions": [
+          ".xml"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "application/xml"
+        ],
+        "name": "xml"
+      },
+      "yaml": {
+        "extensions": [
+          ".yaml",
+          ".yml"
+        ],
+        "fileFormat": "text",
+        "mimeTypes": [
+          "application/x-yaml"
+        ],
+        "name": "yaml"
+      }
+    },
+    "fullLabextensionsUrl": "./extensions",
+    "fullStaticUrl": "./build",
+    "licensesUrl": "./lab/api/licenses",
+    "litePluginSettings": {
+      "@freva-org/jupyterlite-freva-kernel:kernel": {
+        "addonBaseUrl": "../../app/python/addons/",
+        "maxLiveInterpreters": 2,
+        "runtimeIndexUrl": "https://cdn.jsdelivr.net/pyodide/v314.0.6/full/",
+        "setups": [
+          {
+            "addons": [
+              "cartopy-natural-earth-110m",
+              "dask"
+            ],
+            "id": "default",
+            "label": "Waterpark Python (xarray, Dask, Cartopy, freva-client)",
+            "optionalAddons": [
+              "cartopy-natural-earth-110m"
+            ],
+            "profile": "freva-client",
+            "runStarter": false
+          }
+        ],
+        "siteWheels": [
+          {
+            "sha256": "86e1bf6120e9eb39ab3c4b4dd9ae8283f8f92d5c2895c0fc0f56c6255c50ecb7",
+            "url": "../../app/python/wheels/marray-0.0.12-py3-none-any.whl"
+          },
+          {
+            "sha256": "c688dc56b322feada9755ca27094a4cba13cb86feb5902e3564e538c04fc7bb4",
+            "url": "../../app/python/wheels/healpix_geo-0.4.2-cp310-abi3-pyemscripten_2026_0_wasm32.whl"
+          }
+        ],
+        "wheelhouseUrl": "../../app/python/freva-wheels/"
+      }
+    },
+    "settingsOverrides": {
+      "@freva-org/jupyterlite-freva-data:plugin": {
+        "dataSha256": "9a01b29a9b845e5cccf2b2b0c424067a8f6f0de121707f899b4bc52fbf01ba7c",
+        "dataUrl": "freva-data/panel.9a01b29a9b84.json",
+        "defaultAction": "open-in-notebook",
+        "gridlook": true,
+        "iconSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" width=\"24\" height=\"24\" fill=\"#26a69a\"><rect x=\"3\" y=\"3\" width=\"6\" height=\"4\" rx=\"0.5\"/><rect x=\"11\" y=\"10\" width=\"10\" height=\"4\" rx=\"0.5\"/><rect x=\"11\" y=\"17\" width=\"10\" height=\"4\" rx=\"0.5\"/><path d=\"M5 7v12h6M5 12h6\" fill=\"none\" stroke=\"#26a69a\" stroke-width=\"2\"/></svg>\n",
+        "kernelName": "freva-python",
+        "launcher": {
+          "ask": false,
+          "browse": true,
+          "examples": true,
+          "newNotebook": true
+        },
+        "seedNotebooks": [
+          {
+            "path": "era5_july_2021.ipynb",
+            "title": "Waterpark in a notebook: ERA5, July 2021"
+          },
+          {
+            "path": "examples/01_first_map.ipynb",
+            "title": "A map of one month"
+          },
+          {
+            "path": "examples/02_global_mean.ipynb",
+            "title": "The global mean is just a mean"
+          },
+          {
+            "path": "examples/03_region_bbox.ipynb",
+            "title": "Cutting out a region"
+          },
+          {
+            "path": "examples/04_zonal_mean.ipynb",
+            "title": "Zonal means come for free"
+          },
+          {
+            "path": "examples/05_meridional_mean.ipynb",
+            "title": "Meridional means, and why they are harder"
+          },
+          {
+            "path": "examples/06_hovmoeller.ipynb",
+            "title": "A Hovmöller diagram"
+          },
+          {
+            "path": "examples/07_pyramid_levels.ipynb",
+            "title": "Moving up and down the pyramid"
+          },
+          {
+            "path": "examples/08_cross_dataset.ipynb",
+            "title": "Comparing two datasets without regridding"
+          }
+        ],
+        "siteName": "Waterpark",
+        "startNotebook": "era5_july_2021.ipynb",
+        "title": "Waterpark data"
+      }
+    },
+    "versionInfo": {
+      "@jupyter-notebook/application": {
+        "label": "Jupyter Notebook",
+        "version": "7.6.3"
+      },
+      "@jupyterlab/application": {
+        "label": "JupyterLab",
+        "version": "4.6.4"
+      }
+    }
+  },
+  "jupyter-lite-schema-version": 0
+}

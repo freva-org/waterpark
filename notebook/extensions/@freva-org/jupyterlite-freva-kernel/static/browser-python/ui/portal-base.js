@@ -1,0 +1,1 @@
+export function portalBaseSource(r,e){if(!r)return;let t=new URL(r,e).href;return`PORTAL_BASE_URL = ${JSON.stringify(t)}`}

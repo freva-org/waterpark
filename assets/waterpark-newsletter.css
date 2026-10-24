@@ -1,0 +1,152 @@
+/* Waterpark newsletter signup.
+ *
+ * Everything is expressed in mkdocs-material custom properties so the widget
+ * follows the teal/amber palette and both colour schemes without a second
+ * set of rules for dark mode.
+ */
+
+.wp-nl {
+  --wp-nl-line: var(--md-default-fg-color--lightest);
+  font-size: 0.72rem;
+}
+
+/* The only variant. The signup form lives on the newsletter page; the
+   footer carries a link to it rather than the form itself. */
+.wp-nl--block {
+  border: 1px solid var(--wp-nl-line);
+  border-left: 3px solid var(--md-primary-fg-color);
+  border-radius: 0.1rem;
+  padding: 1rem 1.2rem;
+  margin: 1.6rem 0;
+}
+
+.wp-nl__title {
+  margin: 0 0 0.15rem;
+  font-weight: 700;
+  color: var(--md-default-fg-color);
+  line-height: 1.35;
+}
+
+.wp-nl__sub {
+  margin: 0;
+  color: var(--md-default-fg-color--light);
+  line-height: 1.5;
+  max-width: 34em;
+}
+
+/* The `hidden` attribute is only `display: none` in the UA stylesheet, and
+   any author rule with a class selector outranks it. Without these guards,
+   hiding the row after a successful signup does nothing: the form stays on
+   screen with a stuck "Sending..." button next to the success message. */
+.wp-nl[hidden],
+.wp-nl__row[hidden] {
+  display: none;
+}
+
+.wp-nl__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+/* Visible-to-screen-readers-only label. The placeholder is not a label. */
+.wp-nl__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.wp-nl__input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  color: var(--md-default-fg-color);
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: 0.1rem;
+}
+
+.wp-nl__input::placeholder { color: var(--md-default-fg-color--lighter); }
+
+.wp-nl__input:focus-visible,
+.wp-nl__btn:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 1px;
+}
+
+.wp-nl__input:disabled { opacity: 0.6; }
+
+/* Honeypot: off-screen rather than display:none, which some bots skip. */
+.wp-nl__trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.wp-nl__btn {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.9rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--md-primary-bg-color);
+  background: var(--md-primary-fg-color);
+  border: 1px solid transparent;
+  border-radius: 0.1rem;
+  cursor: pointer;
+  transition: background-color 125ms;
+}
+
+.wp-nl__btn:hover:not(:disabled) { background: var(--md-accent-fg-color); }
+
+.wp-nl__btn:disabled { opacity: 0.55; cursor: default; }
+
+.wp-nl__note {
+  margin: 0.5rem 0 0;
+  line-height: 1.5;
+  max-width: 40em;
+}
+
+.wp-nl__note--ok { color: var(--md-primary-fg-color); }
+.wp-nl__note--err { color: var(--md-typeset-del-color, #d3302f); }
+
+.wp-nl__consent {
+  margin: 0.5rem 0 0;
+  font-size: 0.62rem;
+  line-height: 1.55;
+  color: var(--md-default-fg-color--light);
+  max-width: 46em;
+}
+
+.wp-nl__consent a { color: inherit; text-decoration: underline; }
+
+/* Landing panel on the confirmation / unsubscribe page */
+.wp-nl-panel {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-left: 3px solid var(--md-default-fg-color--lighter);
+  border-radius: 0.1rem;
+  padding: 1rem 1.2rem;
+  margin: 1.4rem 0;
+}
+
+.wp-nl-panel--ok { border-left-color: var(--md-primary-fg-color); }
+.wp-nl-panel--err { border-left-color: var(--md-typeset-del-color, #d3302f); }
+
+.wp-nl-panel__title {
+  margin: 0 0 0.3rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.wp-nl-panel p { margin: 0 0 0.4rem; }
+.wp-nl-panel .wp-nl__btn { margin-top: 0.4rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wp-nl__btn { transition: none; }
+}
