@@ -1,0 +1,72 @@
+{
+  "realm": "waterpark",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "waterpark-api",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "waterpark-cli",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "fullScopeAllowed": false,
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "waterpark-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "waterpark-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "waterpark-other",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "fullScopeAllowed": false
+    }
+  ],
+  "roles": {
+    "client": {
+      "waterpark-api": [{ "name": "remapweights-contributor" }]
+    }
+  },
+  "clientScopeMappings": {
+    "waterpark-api": [
+      { "client": "waterpark-cli", "roles": ["remapweights-contributor"] }
+    ]
+  },
+  "users": [
+    {
+      "username": "alice",
+      "email": "alice@example.org",
+      "firstName": "Alice",
+      "lastName": "Contributor",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "alice" }],
+      "clientRoles": { "waterpark-api": ["remapweights-contributor"] }
+    },
+    {
+      "username": "bob",
+      "email": "bob@example.org",
+      "firstName": "Bob",
+      "lastName": "Reader",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "bob" }]
+    }
+  ]
+}

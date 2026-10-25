@@ -15,11 +15,13 @@ on:
     paths:
       - "landingpage/**"
       - ".dev/**"
+      - "api/**"
       - ".github/workflows/smoke.yml"
   pull_request:
     paths:
       - "landingpage/**"
       - ".dev/**"
+      - "api/**"
       - ".github/workflows/smoke.yml"
   workflow_dispatch:
 
@@ -43,10 +45,22 @@ jobs:
         # local mailbox, which is exactly the shape a developer gets.
         run: $COMPOSE up --build -d
 
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: API tests
+        run: |
+          pip install -r api/requirements.txt pytest
+          cd api && pytest -q
+
+      - name: Remapping weights against the stack
+        run: python .dev/smoke-remapweights.py
+
       - name: Logs
         if: always()
         run: |
-          for svc in proxy docs api mailbox; do
+          for svc in proxy docs api keycloak s3 mailbox; do
             echo "::group::$svc"
             $COMPOSE logs --tail 100 "$svc" || true
             echo "::endgroup::"

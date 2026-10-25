@@ -64,7 +64,7 @@ repos:
         # Left out for now, worth a separate pass:
         #   landingpage/scripts/<dataset>/       one-off conversion recipes
         #     with long lines and two F821 undefined names
-        files: ^(rest-api/.*\.py|landingpage/scripts/(sync_shared|refresh_buckets)\.py)$
+        files: ^(api/.*\.py|landingpage/scripts/(sync_shared|refresh_buckets)\.py)$
         args:
           - --max-complexity=10
           - --ignore=E203,F405,F403,E704,W503,C901,E402

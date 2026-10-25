@@ -1,0 +1,7 @@
+boto3==1.43.116
+greenlet==3.5.6
+litestar==2.25.0
+netCDF4==1.7.5
+numpy==2.5.4
+py-oidc-auth[litestar]==2606.0.0
+uvicorn==0.54.0

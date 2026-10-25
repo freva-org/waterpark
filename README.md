@@ -5,7 +5,10 @@ the HEALPix data hub on S3.
 
 Multiple things live here. The **landing page** is a mkdocs-material site
 published to `gh-pages` and served by nginx on the VM. The **API** is a
-small FastAPI service behind the same nginx, serving `/api`.
+small Litestar service serving `/api/v1`; today that is the remapping
+weights registry at `/api/v1/remapweights`. It runs in the development
+stack only: production routing is not set up yet, and uploads are checked
+inside the API process without memory or time limits.
 
 The `grid-doctor` package and its technical documentation live in
 [freva-org/grid-doctor](https://github.com/freva-org/grid-doctor). A few
@@ -17,6 +20,7 @@ pages are shared between the two sites; see [Shared pages](#shared-pages).
 |---|---|
 | `landingpage/` | mkdocs site: content, theme overrides, build tooling |
 | `catalogue/` | crawler configs, and the service that delivers what CI publishes |
+| `api/` | the Litestar API: remapping weights upload and download |
 | `.dev/` | development stack: compose file, proxy config, secrets |
 | `justfile` | entry point for everything below; `just` lists every recipe |
 
@@ -37,6 +41,9 @@ just up           # same, detached
 |---|---|
 | `http://localhost:8000` | the site, with `/api` on the same origin |
 | `http://localhost:8000/mailbox/` | every outgoing email lands here |
+| `http://localhost:8000/api/v1/docs` | API docs |
+| `http://localhost:8080` | Keycloak, realm `waterpark`: `alice`/`alice` may upload, `bob`/`bob` may not |
+| `http://localhost:7070` | Versity GW, where downloads redirect to |
 
 Using podman: `COMPOSE=podman-compose just dev`, or export `COMPOSE` once
 in your shell. Rootless is fine for either runtime.
