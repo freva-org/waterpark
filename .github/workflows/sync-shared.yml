@@ -59,7 +59,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git diff --quiet; then
+          paths=(landingpage/shared landingpage/shared-sources.toml landingpage/shared.lock)
+
+          # `git diff --quiet` ignores untracked files, so a page newly
+          # adopted upstream would be missed. Ask git status instead.
+          if [[ -z "$(git status --porcelain -- "${paths[@]}")" ]]; then
             echo "shared docs already at the upstream tip"
             exit 0
           fi
@@ -72,7 +76,7 @@ jobs:
           git config user.name "$bot_login"
           git config user.email "${bot_id}+${bot_login}@users.noreply.github.com"
           git checkout -B "$branch"
-          git add landingpage/shared landingpage/shared-sources.toml landingpage/shared.lock
+          git add -- "${paths[@]}"
           git commit -m "docs: sync shared pages from grid-doctor@${pin:0:8}"
           # Force-push the same branch each run, so an already-open PR picks
           # up the new commit instead of a second PR being opened.
@@ -87,5 +91,35 @@ jobs:
               These pages are owned upstream. If something here looks wrong, fix it in grid-doctor rather than in this PR."
           fi
 
-          # Enable automerge on the PR (works whether it was just created or already exists)
-          gh pr merge "$branch" --squash --auto
+          # Queue the PR for merging.
+          #
+          # Right after `gh pr create` (or a force-push) GitHub reports the
+          # merge state as UNKNOWN while it recomputes mergeability. gh then
+          # tries to enable auto-merge, and if GitHub settles on CLEAN in the
+          # meantime the API refuses ("Pull request is in clean status") and
+          # the job fails although the PR is fine. On the next run the state
+          # is already CLEAN, gh merges directly, and the job goes green
+          # again, which is why this only failed on days upstream moved.
+          #
+          # So: wait for a settled state first, then let gh decide between a
+          # direct merge (CLEAN) and auto-merge (checks still pending), and
+          # retry the race once or twice. The PR is the deliverable, so a
+          # merge that still cannot be queued is a warning, not a failure.
+          state=UNKNOWN
+          for _ in $(seq 1 12); do
+            state=$(gh pr view "$branch" --json mergeStateStatus --jq .mergeStateStatus)
+            [[ "$state" != "UNKNOWN" ]] && break
+            sleep 5
+          done
+          echo "merge state: $state"
+
+          for attempt in 1 2 3; do
+            if gh pr merge "$branch" --squash --auto; then
+              exit 0
+            fi
+            echo "merge attempt $attempt failed, retrying"
+            sleep 10
+          done
+
+          url=$(gh pr view "$branch" --json url --jq .url)
+          echo "::warning title=sync-shared::Could not merge or enable auto-merge on ${url} (state: ${state}). The PR is open and needs a manual merge."
