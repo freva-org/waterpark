@@ -82,6 +82,19 @@ h1#_top {
   color: var(--sl-color-gray-3);
 }
 
+/* Mermaid diagrams (astro-mermaid renders them into pre.mermaid), centred
+   as the old site's .mermaid-center wrapper did, without needing one. */
+.sl-markdown-content pre.mermaid {
+  display: flex;
+  justify-content: center;
+  background: none;
+  border: 0;
+}
+.sl-markdown-content pre.mermaid > svg {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Card grids translated from Material's `grid cards`. */
 .sl-markdown-content .wp-cards {
   display: grid;

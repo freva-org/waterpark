@@ -21,7 +21,9 @@ export const nav = [
   },
   {
     label: "Notebook",
-    items: [{ label: "Open the notebook", link: "/notebook/lab/index.html" }],
+    // The directory, not index.html: Starlight rewrites sidebar links to the
+    // site's URL style, which would turn index.html into index/.
+    items: [{ label: "Open the notebook", link: "/notebook/lab/" }],
   },
   {
     label: "Tips and tricks",

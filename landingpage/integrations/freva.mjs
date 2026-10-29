@@ -19,7 +19,7 @@
  *                  controls to pages that have a notebook
  */
 import { createHash } from "node:crypto";
-import { cpSync, createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { cpSync, createReadStream, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -116,9 +116,53 @@ export function freva({ staticDirs: dirs }) {
           cpSync(from, join(out, prefix), { recursive: true });
           logger.info(`${relative(ROOT, from) || from} -> /${prefix}/`);
         }
+        checkBuild(out, entries().map(([prefix]) => prefix), logger);
       },
     },
   };
+}
+
+/**
+ * What the link checker cannot see, because it only knows Starlight's pages:
+ *
+ *   - links into the copied directories (/notebook/, /app/, /assets/) that
+ *     point at nothing, such as a sidebar link Starlight rewrote;
+ *   - a ```mermaid fence printed as text, which is what happens when one
+ *     sits inside an HTML block (Material's md_in_html is gone).
+ *
+ * Only for a full build: without .prepared/ there is no /notebook/ to check.
+ */
+function checkBuild(out, prefixes, logger) {
+  const pages = (function walk(dir) {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(join(dir, e.name)) : e.name.endsWith(".html") ? [join(dir, e.name)] : [],
+    );
+  })(out);
+  const roots = prefixes.filter((prefix) => existsSync(join(out, prefix)));
+  const problems = [];
+  const missing = new Map(); // href -> pages linking to it
+  for (const page of pages) {
+    if (/^(app|notebook)\//.test(relative(out, page).split(sep).join("/"))) continue;
+    const html = readFileSync(page, "utf8");
+    const where = `/${relative(out, page).split(sep).join("/")}`;
+    for (const [, href] of html.matchAll(/href="(\/[^"#?]*)/g)) {
+      if (!roots.some((root) => href.startsWith(`/${root}/`))) continue;
+      const target = join(out, decodeURIComponent(href));
+      const file = href.endsWith("/") ? join(target, "index.html") : target;
+      if (!existsSync(file)) missing.set(href, [...(missing.get(href) ?? []), where]);
+    }
+    if (html.includes("```mermaid")) {
+      problems.push(`${where} shows a mermaid fence as text: is it inside an HTML block? Leave it on its own.`);
+    }
+  }
+  for (const [href, from] of missing) {
+    const more = from.length > 1 ? ` and ${from.length - 1} more page(s)` : "";
+    problems.unshift(`${href} does not exist (linked from ${from[0]}${more})`);
+  }
+  if (problems.length) {
+    for (const problem of problems) logger.error(problem);
+    throw new Error(`${problems.length} broken link(s) or diagram(s) in the built site, see above`);
+  }
 }
 
 // ---------------------------------------------------------------------------
