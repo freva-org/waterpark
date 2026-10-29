@@ -52,12 +52,16 @@ jobs:
             --endpoint https://s3.waterpark.dkrz.de \
             --out landingpage/assets/waterpark-datasets.json
 
+      - name: Refresh dataset-tree search index
+        run: python landingpage/scripts/dataset_tree_search_index.py
+
       - name: Open a PR if anything changed
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ steps.freva-bot-token.outputs.token }}
           add-paths: |
             landingpage/assets/waterpark-datasets.json
+            landingpage/assets/dataset-tree-search-index.json
           branch: bump-waterpark-buckets
           delete-branch: true
           commit-message: "chore(waterpark): refresh bucket list"
@@ -67,7 +71,9 @@ jobs:
           title: "chore(waterpark): refresh dataset bucket list"
           body: |
             Automated refresh of `landingpage/assets/waterpark-datasets.json`,
-            the bucket list and labels read by the live dataset tree.
+            the bucket list and labels read by the live dataset tree,
+            and of `landingpage/assets/dataset-tree-search-index.json`,
+            the index its search covers the whole archive with.
 
             The landing page reads this JSON from its deployed assets.
           labels: |
