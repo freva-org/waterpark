@@ -11,7 +11,7 @@
 [source.shared]
 repo = "freva-org/grid-doctor"
 ref = "main"
-commit = "16caeefb49ea5691cf7a95347931946d0a6a2a18"
+commit = "bfc62ec41103b1322d2b212ad91950f6cc6cfe75"
 source_dir = "docs/shared"
 target_dir = "shared"
 
