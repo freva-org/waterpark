@@ -42,6 +42,7 @@ for the pole distortion of latitude/longitude grids.
 ![HEALPix pyramid](/assets/healpix-pyramid.png)
 
 <p class="wp-caption">Visualisation of a HEALPix resolution pyramid from level 0 (bottom) to level 7.</p>
+
 HEALPix is hierarchical. Each parent pixel is split into four child pixels at the
 next finer level. In nested ordering, this makes coarsening straightforward:
 
