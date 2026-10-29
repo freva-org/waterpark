@@ -126,6 +126,9 @@ async function mountTree(host) {
     labels: { emptyBadge: "no data yet" },
     status: { tone: "live", label: "LIVE", code: store.endpoint },
   });
+  Promise.all([import("@freva-org/dataset-tree/search-index"), fetch(siteUrl("assets/dataset-tree-search-index.json"))])
+    .then(async ([{ parseDatasetTreeSearchIndexV1 }, response]) => response.ok && handle.setSearchIndex(parseDatasetTreeSearchIndexV1(await response.json())))
+    .catch(report("search index"));
   host.querySelector('[data-dt-action="collapse-all"]')?.before(notebookButton);
   if (expand) settleBlockBar(panel);
   wireMaximizeControls(document, { mountLayer });
