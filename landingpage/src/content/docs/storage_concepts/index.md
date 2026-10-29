@@ -14,7 +14,6 @@ equal-area grid that provides a common geometry across very different source
 datasets. We then describe why the data is stored as Zarr pyramids and why
 this format works especially well when served from an S3 object store.
 
-<div class="mermaid-center">
 ```mermaid
 flowchart TB
         A["Source datasets<br/>ERA5 · ICON · CMIP6 · Observations"]
@@ -24,4 +23,3 @@ flowchart TB
     A -->|"remap once"| B
     B -->|"coarsen into levels"| C
 ```
-</div>
