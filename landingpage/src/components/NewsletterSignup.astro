@@ -1,0 +1,39 @@
+---
+/**
+ * The newsletter sign-up form. src/scripts/newsletter.js builds it inside
+ * the element below and posts to /api/newsletter/subscribe (listmonk).
+ *
+ * WP_LIST_UUID is the public list id, empty to leave sign-up unconfigured;
+ * .dev/compose.yml sets the development list. WP_API_BASE is empty
+ * wherever the site and the API share an origin, which is production
+ * behind nginx and development behind Caddy.
+ */
+import "../styles/newsletter.css";
+
+interface Props {
+  title?: string;
+  sub?: string;
+  /** DKRZ Datenschutzerklärung for the consent line. */
+  privacy?: string;
+}
+
+const { title = "Sign up", sub = "", privacy = "" } = Astro.props;
+const list = process.env.WP_LIST_UUID ?? "";
+const api = process.env.WP_API_BASE ?? "";
+---
+
+<div
+  class="not-content"
+  data-wp-newsletter
+  data-variant="block"
+  data-title={title}
+  data-sub={sub}
+  data-privacy={privacy}
+  data-list={list || undefined}
+  data-api={api || undefined}
+>
+</div>
+
+<script>
+  import "../scripts/newsletter.js";
+</script>

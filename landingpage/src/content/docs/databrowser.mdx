@@ -1,0 +1,24 @@
+---
+title: Data Browser
+description: Search the hub by dataset, variable, level and frequency, and copy the store URL.
+template: splash
+tableOfContents: false
+---
+
+{/*
+  An ordinary page: web/site.js mounts the application into #databrowser-mount.
+  Its behaviour is configured in assets/databrowser.config.js, its layout in
+  src/styles/app-page.css and src/styles/databrowser.css.
+*/}
+
+import "../../styles/app-page.css";
+import "../../styles/databrowser.css";
+
+<div class="wp-app waterpark-databrowser-wrapper not-content">
+  <div id="databrowser-mount"></div>
+  <p class="wp-app-fallback">
+    The Data Browser is loading. If it does not appear, the same holdings are
+    in the <a href="/stac-browser/">STAC Browser</a>, and the collections are
+    listed on the <a href="/">front page</a>.
+  </p>
+</div>

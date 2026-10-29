@@ -4,6 +4,9 @@ name: docs
 # gh-pages from main. `workflow_dispatch` lets you rebuild and republish
 # from the Actions tab without pushing anything, which is what you want
 # after a shared-docs sync or when the S3 bucket listing has changed.
+#
+# The steps are the justfile's recipes, so a green `just check` on a laptop
+# means the same thing as a green run here.
 
 on:
   push:
@@ -34,17 +37,15 @@ permissions:
 
 defaults:
   run:
-    # tox.ini and mkdocs.yml live here, not at the repository root.
+    # The site's justfile, package.json and tox.ini live here.
     working-directory: landingpage
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # Depth 1 is enough: publishing writes a fresh parentless commit.
       - uses: actions/checkout@v7
-        with:
-          # `mkdocs gh-deploy` needs real history, not a depth-1 clone.
-          fetch-depth: 0
 
       - uses: actions/setup-python@v7
         with:
@@ -57,24 +58,7 @@ jobs:
           cache: npm
           cache-dependency-path: landingpage/package-lock.json
 
-      - name: Disable unused Google Chrome repository
-        shell: bash
-        run: |
-          for source in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
-            [ -f "$source" ] || continue
-            if grep -q 'dl.google.com/linux/chrome' "$source"; then
-              sudo mv "$source" "${source}.disabled"
-            fi
-          done
-
-      - name: Install cairo for the social plugin
-        # mkdocs-material[imaging] builds the social cards with cairosvg.
-        # Without these the plugin warns on every page and --strict fails.
-        run: |
-          sudo apt-get update  --error-on=any
-          sudo apt-get install -y --no-install-recommends \
-            libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev
-        working-directory: .
+      - uses: extractions/setup-just@v4
 
       - name: Install tox
         run: pip install tox
@@ -82,7 +66,7 @@ jobs:
       - name: Verify the vendored shared docs match the pin
         # Fails if someone edited landingpage/shared/ directly. Those pages
         # are owned by grid-doctor; a local change would be silently
-        # reverted by the next sync.
+        # reverted by the next sync. First, because it is the cheapest.
         run: tox -e shared-check
 
       - uses: actions/cache@v6
@@ -96,33 +80,30 @@ jobs:
       - name: Prepare the Freva parts
         env:
           GH_TOKEN: ${{ secrets.HEALPIX_GEO_TOKEN || github.token }}
-        run: |
-          npm ci --no-audit --no-fund
-          ./scripts/fetch-wheels.sh || echo "no healpix-geo wheel: the examples that import it will not run in the browser"
-          node scripts/prepare.mjs
+        run: just prepare
 
-      - name: Build
-        run: tox -e docs
+      - name: Build and check
+        # The build checks every internal link and fails on a broken one,
+        # as `mkdocs build --strict` did; then examples freshness and spelling.
+        run: just check
 
       - name: Publish to gh-pages
         if: >-
           github.ref == 'refs/heads/main' &&
           github.event_name != 'pull_request' &&
           (github.event_name != 'workflow_dispatch' || inputs.deploy)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # --no-history keeps the branch a single commit. The VM does a
-          # shallow clone that only ever pulls, so accumulated history is
-          # pure cost and the built site is large and mostly binary.
-          tox -e docs-deploy -- --message "docs: ${{ github.sha }}"
+          # The site the step above built and checked, as one commit; what
+          # `just deploy` runs after building. The VM does a shallow clone
+          # that only ever pulls, so history there would be pure cost.
+          ./scripts/publish-gh-pages.sh dist "docs: ${{ github.sha }}"
 
       - name: Upload the built site
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: site
-          path: landingpage/site/
+          path: landingpage/dist/
           retention-days: 7

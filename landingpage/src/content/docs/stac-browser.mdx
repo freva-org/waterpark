@@ -1,0 +1,23 @@
+---
+title: STAC Browser
+description: The hub's holdings as a STAC catalogue, for tools that already speak it.
+template: splash
+tableOfContents: false
+---
+
+{/*
+  An ordinary page: web/site.js mounts the application into #stac-browser-mount.
+  Its behaviour is configured in assets/stac-browser.config.js, its layout in
+  src/styles/app-page.css and src/styles/stac-browser.css.
+*/}
+
+import "../../styles/app-page.css";
+import "../../styles/stac-browser.css";
+
+<div class="wp-app waterpark-stac-wrapper not-content">
+  <div id="stac-browser-mount"></div>
+  <p class="wp-app-fallback">
+    The STAC Browser is loading. If it does not appear, the
+    <a href="/databrowser/">Data Browser</a> searches the same holdings.
+  </p>
+</div>

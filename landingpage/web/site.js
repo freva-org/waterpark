@@ -1,4 +1,4 @@
-// Connects the Freva packages to the MkDocs pages; configured by scripts/hooks.py (#wp-site).
+// Connects the Freva packages to the site's pages; configured by #wp-site (src/components/Head.astro).
 import { initCodeCopy } from "@freva-org/browser-python/ui/copy";
 
 const config = JSON.parse(document.getElementById("wp-site")?.textContent || "null");
@@ -17,18 +17,18 @@ function onDiscard(teardown) {
 }
 
 const themeListeners = new Set();
-const currentTheme = () => (document.body?.getAttribute("data-md-color-scheme") === "slate" ? "dark" : "light");
+// Starlight owns the theme: it sets data-theme="light" | "dark" on <html>,
+// resolving "auto" itself. This only listens and passes changes on.
+const currentTheme = () => (document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
 
-function followMaterialTheme() {
-  const apply = () => {
-    const theme = currentTheme();
-    const changed = document.documentElement.getAttribute("data-theme") !== theme;
-    document.documentElement.setAttribute("data-theme", theme);
+function followSiteTheme() {
+  let theme = currentTheme();
+  new MutationObserver(() => {
+    if (currentTheme() === theme) return;
+    theme = currentTheme();
     for (const listener of themeListeners) listener(theme);
-    if (changed) window.dispatchEvent(new CustomEvent("portal:theme", { detail: { mode: theme } }));
-  };
-  apply();
-  new MutationObserver(apply).observe(document.body, { attributes: true, attributeFilter: ["data-md-color-scheme"] });
+    window.dispatchEvent(new CustomEvent("portal:theme", { detail: { mode: theme } }));
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 }
 
 function playgroundConfig(playground) {
@@ -177,8 +177,6 @@ async function mountStac(mount) {
 
 async function mountDatabrowser(mount) {
   document.body.classList.add("waterpark-databrowser-page");
-  const typeset = mount.closest(".md-typeset");
-  if (typeset) (typeset.closest(".md-content") ?? document.body).append(mount);
   const [widget, settings] = await Promise.all([
     import("@freva-org/databrowser"),
     import(/* @vite-ignore */ siteUrl("assets/databrowser.config.js")).catch(() => ({})),
@@ -197,7 +195,7 @@ async function mountDatabrowser(mount) {
 }
 
 function start() {
-  followMaterialTheme();
+  followSiteTheme();
   if (document.querySelector("[data-portal-copy]")) initCodeCopy();
   if (!config) return;
   import("@freva-org/browser-python/ui/notebook").then((m) => m.initNotebookLinks(siteUrl(config.app.notebook.lab))).catch(report("notebook"));

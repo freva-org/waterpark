@@ -1,0 +1,76 @@
+/* Layout for the landing page sections (src/content/docs/index.mdx). */
+
+.sl-markdown-content .wp-section {
+  margin-top: 0;
+  padding-block: 3.5rem;
+  border-top: 1px solid var(--sl-color-gray-5);
+}
+.sl-markdown-content .wp-section h2 {
+  margin-top: 0;
+  font-size: clamp(1.6rem, 1.3rem + 1vw, 2.1rem);
+  font-stretch: 85%;
+}
+.sl-markdown-content .wp-section-lead {
+  max-width: 40rem;
+  color: var(--sl-color-gray-2);
+}
+
+.sl-markdown-content .wp-split {
+  display: grid;
+  /* minmax(0, ...) so a long code line scrolls instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: start;
+}
+@media (min-width: 60rem) {
+  .sl-markdown-content .wp-split {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: 4rem;
+  }
+  .sl-markdown-content .wp-split-figure {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+  }
+}
+.sl-markdown-content .wp-split > * {
+  margin-top: 0;
+}
+.sl-markdown-content .wp-split > div > * + * {
+  margin-top: 1.25rem;
+}
+
+.sl-markdown-content .wp-split-figure figure {
+  margin: 0;
+}
+.sl-markdown-content .wp-split-figure img {
+  width: 100%;
+  border-radius: 0.5rem;
+}
+.sl-markdown-content .wp-split-figure figcaption {
+  margin-top: 0.6rem;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-3);
+}
+
+.sl-markdown-content .wp-promises {
+  display: grid;
+  gap: 0.15rem;
+}
+.sl-markdown-content .wp-promises dd + dt {
+  margin-top: 0.75rem;
+}
+.sl-markdown-content .wp-promises dt {
+  font-weight: 600;
+  color: var(--sl-color-white);
+}
+.sl-markdown-content .wp-promises dd {
+  margin: 0;
+  margin-inline-start: 0;
+  color: var(--sl-color-gray-2);
+}
+
+/* The code sits under the prose and the URL anatomy, full width, so the
+   store URLs read on one line. */
+.sl-markdown-content .wp-split > .wp-span {
+  grid-column: 1 / -1;
+}

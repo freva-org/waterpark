@@ -17,7 +17,8 @@ target_dir = "shared"
 
 # Optional allow-list. Drop it to take whatever upstream has in source_dir;
 # keep it and a new upstream page has to be adopted here deliberately, which
-# also means the nav in mkdocs.yml gets updated in the same commit.
+# also means src/nav.mjs gets updated in the same commit (and, if upstream
+# gives the page no title, VENDORED_TITLES in scripts/sync-content.mjs).
 include = [
     "high-level-access.md",
     "technical-decisions.md",

@@ -1,0 +1,201 @@
+---
+/**
+ * The hero figure: one field on the HEALPix sphere at two levels of the
+ * same pyramid. Level 2 everywhere, level 5 inside the region outlined in
+ * amber. That is the whole pitch of the hub in one picture: browse coarse,
+ * read fine, and the cells line up because they are the same cells.
+ *
+ * Drawn at build time from real HEALPix geometry (src/lib/healpix.ts), so
+ * it ships as a static SVG with no script.
+ */
+import { cellBoundary, cellCentre, cells, distance, orthographic, type LonLat } from "../lib/healpix";
+
+const deg = Math.PI / 180;
+const VIEW: LonLat = [-12 * deg, 34 * deg];
+const FOCUS: LonLat = [-8 * deg, 52 * deg];
+const RADIUS = 24 * deg;
+const COARSE = 4; // nside of level 2
+const FINE = 32; // nside of level 5
+const RATIO = FINE / COARSE;
+
+const project = orthographic(...VIEW);
+
+/**
+ * An illustrative field: warm at the equator, cold at the poles, with
+ * eddy-sized structure on top that level 2 averages away and level 5
+ * resolves. That difference is what the figure is for.
+ */
+function field([lon, lat]: LonLat): number {
+  const large = 0.85 * Math.cos(lat) ** 2 + 0.1 * Math.sin(3 * lon + 2.2 * lat) * Math.cos(lat);
+  const eddies = 0.22 * Math.sin(17 * lon + 5 * Math.sin(9 * lat)) * Math.sin(15 * lat + 3 * Math.cos(11 * lon));
+  return Math.max(0, Math.min(1, large + eddies * Math.cos(lat)));
+}
+
+// Deep water to warm sand. Amber is kept for the refined region's outline.
+const STOPS: [number, [number, number, number]][] = [
+  [0, [27, 52, 92]],
+  [0.4, [14, 110, 116]],
+  [0.7, [95, 199, 194]],
+  [1, [240, 228, 196]],
+];
+function colour(v: number): string {
+  let i = 0;
+  while (i < STOPS.length - 2 && v > STOPS[i + 1][0]) i++;
+  const [a, ca] = STOPS[i];
+  const [b, cb] = STOPS[i + 1];
+  const t = Math.max(0, Math.min(1, (v - a) / (b - a)));
+  const c = ca.map((x, k) => Math.round(x + (cb[k] - x) * t));
+  return `rgb(${c.join(" ")})`;
+}
+
+/** Project a ring; points behind the horizon are pulled onto it. */
+function path(ring: LonLat[]): string | null {
+  const pts = ring.map(project);
+  if (!pts.some((p) => p.visible)) return null;
+  const xy = pts.map((p) => {
+    if (p.visible) return [p.x, p.y];
+    const r = Math.hypot(p.x, p.y) || 1;
+    return [p.x / r, p.y / r];
+  });
+  return "M" + xy.map(([x, y]) => `${x.toFixed(4)} ${y.toFixed(4)}`).join("L") + "Z";
+}
+
+const coarse: { d: string; fill: string; refined: boolean }[] = [];
+const fine: { d: string; fill: string; delay: number }[] = [];
+for (const [face, ix, iy] of cells(COARSE)) {
+  const centre = cellCentre(COARSE, face, ix, iy);
+  const d = path(cellBoundary(COARSE, face, ix, iy, 6));
+  if (!d) continue;
+  const refined = distance(centre, FOCUS) < RADIUS;
+  coarse.push({ d, fill: colour(field(centre)), refined });
+  if (!refined) continue;
+  for (let a = 0; a < RATIO; a++)
+    for (let b = 0; b < RATIO; b++) {
+      const jx = ix * RATIO + a;
+      const jy = iy * RATIO + b;
+      const c = cellCentre(FINE, face, jx, jy);
+      const dd = path(cellBoundary(FINE, face, jx, jy, 1));
+      if (dd) fine.push({ d: dd, fill: colour(field(c)), delay: Math.round((distance(c, FOCUS) / RADIUS) * 700) });
+    }
+}
+const faces = [...cells(1)].map(([f]) => path(cellBoundary(1, f, 0, 0, 24))).filter(Boolean) as string[];
+const region = coarse.filter((c) => c.refined);
+---
+
+<figure class="wp-globe">
+  <svg viewBox="-1.06 -1.06 2.12 2.12" role="img" aria-labelledby="wp-globe-title">
+    <title id="wp-globe-title">
+      A field on the HEALPix sphere, drawn with level 2 cells everywhere and level 5 cells over the North Atlantic and Europe.
+    </title>
+    <defs>
+      <clipPath id="wp-globe-clip"><circle r="1" /></clipPath>
+      <radialGradient id="wp-globe-shade" cx="-0.35" cy="-0.4" r="1.5" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#fff" stop-opacity="0.1" />
+        <stop offset="0.6" stop-color="#fff" stop-opacity="0" />
+        <stop offset="1" stop-color="#000" stop-opacity="0.28" />
+      </radialGradient>
+    </defs>
+    <g clip-path="url(#wp-globe-clip)">
+      <circle r="1" class="sea" />
+      <g class="coarse">
+        {coarse.map((c) => <path d={c.d} fill={c.fill} />)}
+      </g>
+      <g class="fine">
+        {fine.map((c) => <path d={c.d} fill={c.fill} stroke={c.fill} style={`--d:${c.delay}ms`} />)}
+      </g>
+      <g class="faces">
+        {faces.map((d) => <path d={d} />)}
+      </g>
+      <g class="region">
+        {region.map((c) => <path d={c.d} />)}
+      </g>
+      <circle r="1" fill="url(#wp-globe-shade)" />
+    </g>
+    <circle r="1" class="rim" />
+  </svg>
+  <figcaption>
+    <span class="item"><span class="key key-coarse"></span>Level 2, 192 cells for the globe</span>
+    <span class="item"><span class="key key-fine"></span>Level 5, 64 cells inside each of those</span>
+  </figcaption>
+</figure>
+
+<style>
+  .wp-globe {
+    margin: 0;
+  }
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .sea {
+    fill: var(--wp-globe-sea);
+  }
+  .coarse path {
+    stroke: var(--wp-cell-line);
+    stroke-width: 0.006;
+    opacity: 0.72;
+  }
+  .fine path {
+    stroke-width: 0.002;
+  }
+  .faces path {
+    fill: none;
+    stroke: var(--wp-cell-face);
+    stroke-width: 0.01;
+  }
+  .region path {
+    fill: none;
+    stroke: var(--wp-amber);
+    stroke-width: 0.008;
+  }
+  .rim {
+    fill: none;
+    stroke: var(--wp-cell-face);
+    stroke-width: 0.008;
+  }
+
+  /* The one moment of motion: the fine level resolves outwards from the
+     centre of the region, as reading a finer level does. */
+  @media (prefers-reduced-motion: no-preference) {
+    .fine path {
+      animation: resolve 0.5s ease-out both;
+      animation-delay: calc(300ms + var(--d));
+    }
+    @keyframes resolve {
+      from {
+        opacity: 0;
+      }
+    }
+  }
+
+  figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem 0.5rem;
+    margin-top: 1rem;
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+  }
+  .item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-inline: 0.5rem;
+  }
+  .key {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 2px;
+  }
+  .key-coarse {
+    border: 1px solid var(--wp-cell-face);
+  }
+  .key-fine {
+    border: 1.5px solid var(--wp-amber);
+  }
+</style>

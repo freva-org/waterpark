@@ -1,0 +1,110 @@
+---
+/**
+ * Hero for pages that set `hero:` in frontmatter (only the landing page).
+ * The words stay in the page's frontmatter; this decides the layout and
+ * puts the HEALPix globe beside them.
+ */
+import { LinkButton } from "@astrojs/starlight/components";
+import HealpixGlobe from "./HealpixGlobe.astro";
+
+// Starlight's id for the page title, which its skip link targets.
+const PAGE_TITLE_ID = "_top";
+
+const { data } = Astro.locals.starlightRoute.entry;
+const { title = data.title, tagline, actions = [] } = data.hero || {};
+const buttons = actions.filter((a) => a.variant !== "minimal");
+const links = actions.filter((a) => a.variant === "minimal");
+---
+
+<div class="wp-hero">
+  <div class="copy">
+    <h1 id={PAGE_TITLE_ID} data-page-title set:html={title} />
+    {tagline && <p class="tagline" set:html={tagline} />}
+    <div class="actions">
+      {
+        buttons.map(({ link, text, variant }) => (
+          <LinkButton href={link} variant={variant}>
+            {text}
+          </LinkButton>
+        ))
+      }
+    </div>
+    {
+      links.length > 0 && (
+        <ul class="more">
+          {links.map(({ link, text, attrs }) => (
+            <li>
+              <a href={link} {...attrs}>{text}</a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+  <div class="figure">
+    <HealpixGlobe />
+  </div>
+</div>
+
+<style>
+  .wp-hero {
+    display: grid;
+    gap: 2.5rem;
+    align-items: center;
+    padding-block: 1.5rem 3rem;
+  }
+  @media (min-width: 50rem) {
+    .wp-hero {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 4rem;
+      padding-block: 3rem 4.5rem;
+    }
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(2.4rem, 1.4rem + 3.6vw, 4rem);
+    font-stretch: 82%;
+    font-weight: 620;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    color: var(--sl-color-white);
+    text-wrap: balance;
+  }
+  .tagline {
+    max-width: 34rem;
+    margin: 1.5rem 0 0;
+    font-size: clamp(1.05rem, 1rem + 0.3vw, 1.2rem);
+    line-height: 1.6;
+    color: var(--sl-color-gray-2);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+  .more {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--sl-text-sm);
+  }
+  .more a {
+    color: var(--sl-color-gray-2);
+    text-decoration-color: var(--sl-color-gray-4);
+    text-underline-offset: 0.25em;
+  }
+  .more a:hover {
+    color: var(--sl-color-accent-high);
+    text-decoration-color: currentColor;
+  }
+
+  .figure {
+    width: min(100%, 30rem);
+    justify-self: center;
+  }
+</style>

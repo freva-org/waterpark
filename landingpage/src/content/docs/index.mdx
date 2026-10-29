@@ -1,0 +1,111 @@
+---
+title: Waterpark
+description: The HEALPix data hub on S3. Reanalyses, climate model output, campaign data and satellite products on one equal-area grid, ready to read from anywhere.
+template: splash
+hero:
+  title: Every dataset on one grid. Read only what you need.
+  tagline: Reanalyses, climate model output, campaign data and satellite products, remapped once onto the same equal-area HEALPix grid and served as multi-resolution Zarr pyramids over S3. Nothing to download and nothing to regrid. Explore at a coarse level, analyse at a fine one, and compare datasets cell by cell.
+  actions:
+    - text: Find data
+      link: /databrowser/
+      variant: primary
+    - text: Learn by example
+      link: /examples/
+      variant: secondary
+    - text: Browse as STAC
+      link: /stac-browser/
+      variant: minimal
+    - text: Open the notebook
+      link: /notebook/lab/index.html
+      variant: minimal
+      attrs:
+        data-wp-notebook: lab
+---
+
+import DatasetList from "../../components/DatasetList.astro";
+import StorePath from "../../components/StorePath.astro";
+import "../../styles/landing.css";
+
+<section class="wp-section">
+
+## On the hub
+
+<p class="wp-section-lead">Collections published so far. The <a href="/databrowser/">Data Browser</a> searches them by variable, level and frequency and gives you the store URL.</p>
+
+<DatasetList />
+
+</section>
+
+<section class="wp-section wp-split">
+<div>
+
+## Compare datasets cell by cell
+
+Two stores on the same grid line up cell for cell, so a model bias against
+ERA5 is a subtraction. Every dataset is written at a range of levels and
+frequencies: develop against a coarse monthly store, then change two parts
+of the URL.
+
+</div>
+<div>
+
+<StorePath />
+
+For high levels and small regions, read
+[the tips on chunking and selection](/high-level-access/) first.
+
+</div>
+<div class="wp-span">
+
+```python title="bias.py"
+import xarray as xr
+
+S3 = {"anon": True, "endpoint_url": "https://s3.waterpark.dkrz.de"}
+
+era5 = xr.open_zarr(
+    "s3://reanalysis/healpix/era5/P1M/level_5.zarr", storage_options=S3, chunks=None
+)
+model = xr.open_zarr(
+    "s3://nextgems/healpix/ngc4008/P1D/level_5.zarr", storage_options=S3, chunks=None
+)
+
+bias = (
+    model["tas"].sel(time="2021").mean("time")
+    - era5["tas"].sel(time="2021").mean("time")
+)
+```
+
+</div>
+</section>
+
+<section class="wp-section wp-split wp-split-figure">
+<figure>
+<img src="/assets/modis-aqua.png" alt="Sea surface temperature from MODIS Aqua on HEALPix level 10" loading="lazy" />
+<figcaption>Sea surface temperature from MODIS Aqua, remapped to HEALPix level 10.</figcaption>
+</figure>
+<div>
+
+## What you can count on
+
+<dl class="wp-promises">
+<dt>No regridding</dt>
+<dd>Everything is HEALPix, nested, on one sphere.</dd>
+<dt>Equal-area cells</dt>
+<dd>A global mean is <code>field.mean("cell")</code>, with no <code>cos(lat)</code> weights.</dd>
+<dt>Only the bytes you ask for</dt>
+<dd>Zarr chunks over HTTP, fetched as you select.</dd>
+<dt>A pyramid in space and time</dt>
+<dd>Coarse and monthly, or fine and hourly.</dd>
+<dt>No mounted filesystem</dt>
+<dd>The same URL from a laptop, Levante or a batch job.</dd>
+</dl>
+
+Each source grid is remapped once, conservatively, with
+[grid-doctor](https://github.com/freva-org/grid-doctor). Coarser levels come
+from coarsening that result, not from remapping again. The reasoning is in
+[Why HEALPix?](/storage_concepts/why-healpix/),
+[Why Zarr and S3?](/storage_concepts/zarr-and-s3/) and
+[Remapping decisions](/technical-decisions/).
+
+</div>
+</section>

@@ -54,24 +54,21 @@ services:
       context: ../landingpage
       dockerfile: Containerfile.dev
     volumes:
-      - ../landingpage/data:/work/data:ro,z
-      - ../landingpage/shared:/work/shared:ro,z
-      - ../landingpage/assets:/work/assets:ro,z
-      - ../landingpage/scripts:/work/scripts:ro,z
-      - ../landingpage/mkdocs.yml:/work/mkdocs.yml:ro,z
-      - ../landingpage:/host:ro,z
-      - docs-build:/work/.build
+      # The checkout, so edits reload. What the container installs and
+      # caches stays in volumes; see landingpage/entrypoint.dev.sh.
+      - ../landingpage:/work:z
+      - docs-node-modules:/work/node_modules
+      - docs-astro:/work/.astro
+      - docs-cache:/work/.cache
     environment:
-      GRID_DOCTOR_ROOT: /work
-      WATERPARK_BASE_PATH: /
-      WATERPARK_PREPARED: /host/.prepared
       WP_LIST_UUID: "21403ce5-ad9a-439f-a132-f0ca409db1f7"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000').read()"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8000/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
       interval: 2s
       timeout: 5s
-      retries: 30
-      start_period: 60s
+      retries: 60
+      # The first start installs node_modules into its volume.
+      start_period: 180s
     restart: unless-stopped
 
   # --- the newsletter ------------------------------------------------------
@@ -144,5 +141,7 @@ services:
     restart: unless-stopped
 
 volumes:
-  docs-build:
+  docs-node-modules:
+  docs-astro:
+  docs-cache:
   postgres-data:
