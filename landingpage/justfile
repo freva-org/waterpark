@@ -97,6 +97,11 @@ shared:
 shared-update:
     python3 scripts/sync_shared.py --update
 
+# Redraw the logo and icons in assets/ from HEALPix geometry
+[group('content')]
+logo: install
+    node scripts/make-logo.mjs
+
 # Refresh the dataset listing from the live S3 endpoint
 [group('content')]
 buckets:

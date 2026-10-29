@@ -82,9 +82,20 @@ function cardGrids(lines) {
   return out;
 }
 
-/** `/// caption` ... `///` after a figure. */
+/**
+ * `/// caption` ... `///` after a figure, as a caption paragraph.
+ *
+ * The paragraph is raw HTML, and in CommonMark an HTML block runs until the
+ * next blank line: whatever follows on the next line is swallowed as HTML
+ * and printed as text. So it gets a blank line on both sides, and the end
+ * pattern matches only to the end of the `///` line, never across the
+ * blank line after it.
+ */
 function captions(text) {
-  return text.replace(/^\/\/\/ caption\s*\n([\s\S]*?)\n\/\/\/\s*$/gm, (_, body) => `<p class="wp-caption">${body.trim()}</p>`);
+  return text.replace(
+    /^\/\/\/ caption[ \t]*\n([\s\S]*?)\n\/\/\/[ \t]*$/gm,
+    (_, body) => `\n<p class="wp-caption">${body.trim()}</p>\n`,
+  );
 }
 
 /** Resolve a link or image target relative to the page, into a site path. */

@@ -127,6 +127,12 @@
   --warning: #d8bd77;
   --warning-bg: #2a2317;
 }
+/* With the viewer off (web/site.js) only the Metadata tab is left, so the
+   tab bar has nothing to choose between. If a data-inspector release
+   renames the class, the greyed-out 3D tab simply shows again. */
+data-inspector.wp-inspector[viewer-off] .di-tabs {
+  display: none;
+}
 data-inspector.wp-inspector {
   --di-bg: var(--surface);
   --di-fg: var(--ink);
@@ -220,4 +226,66 @@ data-inspector.wp-inspector .xr-wrap {
 :is(.portal-code-figure, .portal-overlay-root, .portal-overlay-root-top, .portal-dataset-tree-block) [hidden],
 .portal-code-figure[hidden] {
   display: none !important;
+}
+
+/* "Visualise": GridLook full screen over the page (web/site.js). */
+.wp-gridlook {
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--sl-color-white);
+  background: var(--sl-color-black);
+}
+.wp-gridlook[open] {
+  display: flex;
+  flex-direction: column;
+}
+.wp-gridlook::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+.wp-gridlook__bar {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.5rem 0.75rem 0.5rem 1rem;
+  border-bottom: 1px solid var(--sl-color-gray-5);
+  font-size: var(--sl-text-sm);
+}
+.wp-gridlook__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-sm);
+  font-weight: 400;
+  color: var(--sl-color-gray-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wp-gridlook__open {
+  color: var(--sl-color-accent-high);
+  white-space: nowrap;
+}
+.wp-gridlook__close {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--sl-color-gray-4);
+  border-radius: 0.375rem;
+  color: var(--sl-color-white);
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.wp-gridlook__close:hover {
+  background: var(--sl-color-gray-6);
+}
+.wp-gridlook__frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #000;
 }

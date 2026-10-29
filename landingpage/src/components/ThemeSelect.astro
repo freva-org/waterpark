@@ -1,0 +1,168 @@
+---
+/**
+ * The theme control, as a three-position switch: light, auto, dark.
+ *
+ * Replaces Starlight's dropdown and keeps its contract: the choice lives in
+ * localStorage["starlight-theme"] ("light", "dark", or "" for auto) and is
+ * applied as data-theme on <html>, so Starlight's early no-flash script
+ * (ThemeProvider) and the widgets that follow the theme (web/site.js) work
+ * unchanged, and visitors keep the setting they already chose.
+ *
+ * Under the thumb are native radio buttons, so arrow keys, focus and screen
+ * readers behave as for any radio group. The control appears in the header
+ * and in the mobile menu; each copy has its own group name and they stay
+ * in step.
+ */
+import { Icon } from "@astrojs/starlight/components";
+
+const t = Astro.locals.t;
+const group = `wp-theme-${Math.random().toString(36).slice(2, 8)}`;
+const options = [
+  { value: "light", icon: "sun", label: t("themeSelect.light") },
+  { value: "auto", icon: "laptop", label: t("themeSelect.auto") },
+  { value: "dark", icon: "moon", label: t("themeSelect.dark") },
+] as const;
+---
+
+<wp-theme-switch>
+  <div class="switch" role="radiogroup" aria-label={t("themeSelect.accessibleLabel")}>
+    <span class="thumb" aria-hidden="true"></span>
+    {
+      options.map(({ value, icon, label }) => (
+        <label title={label}>
+          <input type="radio" name={group} value={value} checked={value === "auto"} />
+          <Icon name={icon} size="1rem" />
+          <span class="sr-only">{label}</span>
+        </label>
+      ))
+    }
+  </div>
+</wp-theme-switch>
+
+{/* Before paint: put the thumb where the stored choice is, so it never jumps. */}
+<script is:inline>
+  (() => {
+    const stored = typeof localStorage !== "undefined" && localStorage.getItem("starlight-theme");
+    const value = stored === "light" || stored === "dark" ? stored : "auto";
+    const pickers = document.querySelectorAll("wp-theme-switch");
+    const input = pickers[pickers.length - 1]?.querySelector(`input[value="${value}"]`);
+    if (input) input.checked = true;
+  })();
+</script>
+
+<script>
+  type Theme = "auto" | "dark" | "light";
+  const storageKey = "starlight-theme";
+
+  const parse = (value: unknown): Theme => (value === "light" || value === "dark" ? value : "auto");
+  const load = (): Theme => {
+    try {
+      return parse(localStorage.getItem(storageKey));
+    } catch {
+      return "auto";
+    }
+  };
+  const system = (): "light" | "dark" => (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+
+  function apply(theme: Theme): void {
+    document.documentElement.dataset.theme = theme === "auto" ? system() : theme;
+    try {
+      localStorage.setItem(storageKey, theme === "auto" ? "" : theme);
+    } catch {
+      // Storage blocked: the choice holds for this page only.
+    }
+    for (const input of document.querySelectorAll<HTMLInputElement>(`wp-theme-switch input[value="${theme}"]`)) {
+      input.checked = true;
+    }
+  }
+
+  matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
+    if (load() === "auto") apply("auto");
+  });
+
+  class ThemeSwitch extends HTMLElement {
+    connectedCallback() {
+      const current = this.querySelector<HTMLInputElement>(`input[value="${load()}"]`);
+      if (current) current.checked = true;
+      this.addEventListener("change", (event) => {
+        const input = event.target as HTMLInputElement;
+        if (input.type === "radio" && input.checked) apply(parse(input.value));
+      });
+    }
+  }
+  customElements.define("wp-theme-switch", ThemeSwitch);
+</script>
+
+<style>
+  .switch {
+    --size: 1.75rem;
+    --pad: 0.1875rem;
+    position: relative;
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: var(--size);
+    padding: var(--pad);
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 999px;
+    background: var(--sl-color-gray-6);
+  }
+
+  .thumb {
+    position: absolute;
+    top: var(--pad);
+    left: var(--pad);
+    width: var(--size);
+    height: var(--size);
+    border-radius: 999px;
+    background: var(--sl-color-black);
+    box-shadow:
+      0 0 0 1px var(--sl-color-gray-5),
+      0 1px 3px rgb(0 0 0 / 0.25);
+  }
+  .switch:has(input[value="auto"]:checked) .thumb {
+    transform: translateX(var(--size));
+  }
+  .switch:has(input[value="dark"]:checked) .thumb {
+    transform: translateX(calc(2 * var(--size)));
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .thumb {
+      transition: transform 0.2s ease;
+    }
+  }
+
+  label {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: var(--size);
+    height: var(--size);
+    border-radius: 999px;
+    color: var(--sl-color-gray-3);
+    cursor: pointer;
+  }
+  label:hover {
+    color: var(--sl-color-white);
+  }
+  label:has(input:checked) {
+    color: var(--sl-color-accent-high);
+  }
+  label:has(input:checked) :global(svg) {
+    color: var(--wp-amber);
+  }
+  :global([data-theme="light"]) label:has(input:checked) :global(svg) {
+    color: var(--sl-color-accent);
+  }
+  label:has(input:focus-visible) {
+    outline: 2px solid var(--wp-amber);
+    outline-offset: 1px;
+  }
+
+  input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+</style>

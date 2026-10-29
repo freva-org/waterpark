@@ -159,9 +159,13 @@ s3_options = gd.get_s3_options(
 ## Visual comparison
 
 ![MODIS SST on HEALPix](/assets/gridlook-healpix.png)
+
 <p class="wp-caption">HEALPix: remapped to HEALPix level 10.</p>
+
 ![MODIS SST on original grid](/assets/gridlook-original.png)
+
 <p class="wp-caption">Original: regular latitude/longitude grid at about 2.6 km resolution.</p>
+
 ## Interpreting the benchmark
 
 The benchmark separates three different costs:

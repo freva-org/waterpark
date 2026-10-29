@@ -55,6 +55,10 @@ async function openInspector(url) {
   if (!inspector) {
     const element = document.createElement("data-inspector");
     element.className = "wp-inspector";
+    // Metadata only: the globe has its own full-screen view ("Visualise").
+    // viewer-off is the inspector's documented host policy: no GridLook
+    // frame is made, and it stays off across Load, Retry and other stores.
+    element.setAttribute("viewer-off", "The globe opens from Visualise in the dataset tree.");
     document.body.append(element);
     inspector = { element, controller: attachInspector(element, { getAuthHeaders: () => ({}), isStore: () => true }) };
     element.addEventListener("inspector-close", () => element.removeAttribute("open"));
@@ -62,6 +66,82 @@ async function openInspector(url) {
   inspector.element.file = url;
   inspector.element.setAttribute("open", "");
   await inspector.controller.load(url);
+}
+
+// "Visualise": a dataset on GridLook's 3D globe, full screen.
+//
+// The dataset tree has no hook for extra row buttons, so this adds one next
+// to each "View metadata" (the tree's inspect action) as rows render. Rows
+// are found by the tree's own data-dt-action/data-dt-id attributes; if a
+// future tree release renames them, the button disappears rather than
+// breaking anything. The store URL is built the way the tree's S3 source
+// builds the inspect URL, from the row id (s3://bucket/key).
+const GRIDLOOK = "https://gridlook.pages.dev/";
+
+function storeUrl(endpoint, id) {
+  const match = /^s3:\/\/([^/]+)\/(.+)$/.exec(id);
+  if (!match) return null;
+  const key = match[2].split("/").map(encodeURIComponent).join("/");
+  return `${String(endpoint).replace(/\/+$/, "")}/${encodeURIComponent(match[1])}/${key}`;
+}
+
+let gridlook = null;
+function openGridlook(url, title, opener) {
+  if (!gridlook) {
+    const dialog = document.createElement("dialog");
+    dialog.className = "wp-gridlook";
+    dialog.setAttribute("aria-labelledby", "wp-gridlook-title");
+    dialog.innerHTML =
+      '<header class="wp-gridlook__bar">' +
+      '<h2 class="wp-gridlook__title" id="wp-gridlook-title"></h2>' +
+      '<a class="wp-gridlook__open" target="_blank" rel="noopener">Open in GridLook</a>' +
+      '<button type="button" class="wp-gridlook__close">Close</button>' +
+      "</header>" +
+      '<iframe class="wp-gridlook__frame" title="GridLook 3D viewer" allow="fullscreen" referrerpolicy="no-referrer"' +
+      ' sandbox="allow-scripts allow-same-origin allow-popups allow-downloads"></iframe>';
+    const frame = dialog.querySelector("iframe");
+    dialog.querySelector(".wp-gridlook__close").addEventListener("click", () => dialog.close());
+    // Esc closes a modal <dialog> natively; either way, stop the viewer so it
+    // is not rendering the globe in the background, and give focus back.
+    dialog.addEventListener("close", () => {
+      frame.src = "about:blank";
+      gridlook.opener?.focus();
+    });
+    document.body.append(dialog);
+    gridlook = { dialog, frame, title: dialog.querySelector("h2"), link: dialog.querySelector("a"), opener: null };
+  }
+  const target = `${GRIDLOOK}#${url}`;
+  gridlook.opener = opener;
+  gridlook.title.textContent = title;
+  gridlook.link.href = target;
+  gridlook.frame.src = target;
+  gridlook.dialog.showModal();
+}
+
+function addVisualise(host, endpoint) {
+  const decorate = () => {
+    for (const inspect of host.querySelectorAll('[data-dt-action="inspect"][data-dt-id]')) {
+      if (inspect.nextElementSibling?.hasAttribute("data-wp-visualise")) continue;
+      const url = storeUrl(endpoint, inspect.dataset.dtId);
+      if (!url) continue;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "dataset-tree__btn";
+      button.dataset.wpVisualise = url;
+      button.dataset.wpTitle = inspect.dataset.dtId.replace(/^s3:\/\//, "").replace(/\/+$/, "");
+      button.textContent = "Visualise";
+      button.setAttribute("aria-label", `Visualise ${button.dataset.wpTitle} on a 3D globe`);
+      inspect.after(button);
+    }
+  };
+  const observer = new MutationObserver(decorate);
+  observer.observe(host, { childList: true, subtree: true });
+  decorate();
+  host.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-wp-visualise]");
+    if (button) openGridlook(button.dataset.wpVisualise, button.dataset.wpTitle, button);
+  });
+  return () => observer.disconnect();
 }
 
 async function mountTree(host) {
@@ -123,7 +203,7 @@ async function mountTree(host) {
     python: { enabled: true, onTry: (event) => void block.tryPython(event).catch(() => undefined) },
     onOpenNotebook: (node) => openNotebook({ dataset: node.id }),
     onInspect: (node) => openInspector(node.inspect),
-    labels: { emptyBadge: "no data yet" },
+    labels: { emptyBadge: "no data yet", inspect: "View metadata" },
     status: { tone: "live", label: "LIVE", code: store.endpoint },
   });
   Promise.all([import("@freva-org/dataset-tree/search-index"), fetch(siteUrl("assets/dataset-tree-search-index.json"))])
@@ -132,7 +212,11 @@ async function mountTree(host) {
   host.querySelector('[data-dt-action="collapse-all"]')?.before(notebookButton);
   if (expand) settleBlockBar(panel);
   wireMaximizeControls(document, { mountLayer });
-  onDiscard(() => handle.destroy());
+  const stopVisualise = addVisualise(host, store.endpoint);
+  onDiscard(() => {
+    stopVisualise();
+    handle.destroy();
+  });
 }
 
 async function preparePlayground() {

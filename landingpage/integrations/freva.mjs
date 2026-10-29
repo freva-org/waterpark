@@ -18,6 +18,7 @@
  *                  them for the page, and adds the "Open in Notebook"
  *                  controls to pages that have a notebook
  */
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, createReadStream, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative, resolve, sep } from "node:path";
@@ -94,7 +95,8 @@ export function freva({ staticDirs: dirs }) {
           },
         });
       },
-      "astro:server:setup": ({ server }) => {
+      "astro:server:setup": ({ server, logger }) => {
+        watchGenerated(server, logger);
         server.middlewares.use((req, res, next) => {
           const path = decodeURIComponent((req.url ?? "/").split("?")[0]).replace(/^\/+/, "");
           for (const [prefix, dir] of entries().reverse()) {
@@ -123,12 +125,53 @@ export function freva({ staticDirs: dirs }) {
 }
 
 /**
+ * In `astro dev`, regenerate the pages built from examples/ and shared/
+ * when their sources change, so editing an example's .py reloads the page
+ * like any other edit. The generated copies in src/content/docs/ are never
+ * the place to edit; this makes that the path of least resistance.
+ */
+function watchGenerated(server, logger) {
+  const sources = [join(ROOT, "examples"), join(ROOT, "shared")];
+  const relevant = (file) => sources.some((dir) => file.startsWith(dir + sep)) && /\.(py|md)$/.test(file);
+  let timer;
+  let running = false;
+  let again = false;
+  const sync = () => {
+    if (running) {
+      again = true;
+      return;
+    }
+    running = true;
+    execFile(process.execPath, [join(ROOT, "scripts", "sync-content.mjs")], { cwd: ROOT }, (error, stdout, stderr) => {
+      running = false;
+      if (error) logger.error(`regenerating pages failed:\n${stderr || error.message}`);
+      else logger.info(stdout.trim().replace(/^\[content\] /, "regenerated: "));
+      if (again) {
+        again = false;
+        sync();
+      }
+    });
+  };
+  server.watcher.add(sources);
+  for (const event of ["add", "change", "unlink"]) {
+    server.watcher.on(event, (file) => {
+      if (!relevant(file)) return;
+      clearTimeout(timer);
+      timer = setTimeout(sync, 200);
+    });
+  }
+}
+
+/**
  * What the link checker cannot see, because it only knows Starlight's pages:
  *
  *   - links into the copied directories (/notebook/, /app/, /assets/) that
  *     point at nothing, such as a sidebar link Starlight rewrote;
- *   - a ```mermaid fence printed as text, which is what happens when one
- *     sits inside an HTML block (Material's md_in_html is gone).
+ *   - Markdown that reached the page as text instead of being rendered: a
+ *     ```mermaid fence, a heading or an image. That is what happens to
+ *     Markdown inside, or directly after, an HTML block such as a <div> or
+ *     a caption <p> with no blank line between (Material's md_in_html is
+ *     gone).
  *
  * Only for a full build: without .prepared/ there is no /notebook/ to check.
  */
@@ -151,8 +194,15 @@ function checkBuild(out, prefixes, logger) {
       const file = href.endsWith("/") ? join(target, "index.html") : target;
       if (!existsSync(file)) missing.set(href, [...(missing.get(href) ?? []), where]);
     }
-    if (html.includes("```mermaid")) {
-      problems.push(`${where} shows a mermaid fence as text: is it inside an HTML block? Leave it on its own.`);
+    // Rendered text only: not code, where "## " and "![" are legitimate.
+    const text = (html.match(/<main[\s\S]*<\/main>/)?.[0] ?? "")
+      .replace(/<(pre|code|script|style)\b[\s\S]*?<\/\1>/g, "")
+      .replace(/<[^>]+>/g, "\n");
+    const raw = [
+      ...text.matchAll(/^[ \t]*(```mermaid|#{1,6} \S.*|!\[[^\]]*\]\([^)]*\))/gm),
+    ].map(([, line]) => line.trim().slice(0, 60));
+    for (const line of new Set(raw)) {
+      problems.push(`${where} shows Markdown as text: "${line}". Put a blank line between it and the HTML before it.`);
     }
   }
   for (const [href, from] of missing) {
@@ -161,7 +211,7 @@ function checkBuild(out, prefixes, logger) {
   }
   if (problems.length) {
     for (const problem of problems) logger.error(problem);
-    throw new Error(`${problems.length} broken link(s) or diagram(s) in the built site, see above`);
+    throw new Error(`${problems.length} problem(s) in the built site, see above`);
   }
 }
 
