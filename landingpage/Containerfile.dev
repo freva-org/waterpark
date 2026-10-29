@@ -4,7 +4,7 @@
 # whatever `just site::prepare` left in .prepared/; without them the site
 # still serves, with plain code blocks and the widget pages' fallback text.
 
-FROM docker.io/library/node:22-slim
+FROM docker.io/library/node:24-slim
 
 # python3 renders the example pages (scripts/build_examples.py --render,
 # offline, standard library only); git is for nothing at runtime but keeps
