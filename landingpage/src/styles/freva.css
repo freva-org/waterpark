@@ -127,6 +127,12 @@
   --warning: #d8bd77;
   --warning-bg: #2a2317;
 }
+/* With the viewer off (web/site.js) only the Metadata tab is left, so the
+   tab bar has nothing to choose between. If a data-inspector release
+   renames the class, the greyed-out 3D tab simply shows again. */
+data-inspector.wp-inspector[viewer-off] .di-tabs {
+  display: none;
+}
 data-inspector.wp-inspector {
   --di-bg: var(--surface);
   --di-fg: var(--ink);

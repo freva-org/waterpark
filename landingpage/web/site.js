@@ -55,6 +55,10 @@ async function openInspector(url) {
   if (!inspector) {
     const element = document.createElement("data-inspector");
     element.className = "wp-inspector";
+    // Metadata only: the globe has its own full-screen view ("Visualise").
+    // viewer-off is the inspector's documented host policy: no GridLook
+    // frame is made, and it stays off across Load, Retry and other stores.
+    element.setAttribute("viewer-off", "The globe opens from Visualise in the dataset tree.");
     document.body.append(element);
     inspector = { element, controller: attachInspector(element, { getAuthHeaders: () => ({}), isStore: () => true }) };
     element.addEventListener("inspector-close", () => element.removeAttribute("open"));
