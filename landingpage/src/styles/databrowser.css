@@ -1,0 +1,80 @@
+/*
+ * Freva Data Browser embed; host-side layout only.
+ */
+
+/* TODO: fix in upstream. The widget's internal layers, sticky list head run to very
+   high z-indexes, above the site header. Without a stacking context of
+   its own the mount shares Material's, and those layers paint over the nav.
+   `isolation` contains them; `z-index: 0` keeps the region under the header. */
+body.waterpark-databrowser-page #databrowser-mount {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+}
+
+/* The page-level layer the terminal window and the File Inspector mount into.
+   Fixed and viewport-sized, so the widget gives a window that drags
+   anywhere on the page, docks at the bottom of the SCREEN, and maximizes to the
+   whole viewport. */
+#waterpark-databrowser-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+#waterpark-databrowser-overlay > * {
+  pointer-events: auto;
+}
+
+/* The pick bar sits at the bottom of the WIDGET */
+body.waterpark-databrowser-page .freva-db .pickbar {
+  position: fixed;
+}
+
+/* 2. Mount sizing */
+.waterpark-databrowser-wrapper {
+  width: 100%;
+}
+body.waterpark-databrowser-page #databrowser-mount {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  /* Exactly the space below the header and the announcement bar
+     (src/styles/app-page.css). Any taller and the document scrolls by the
+     difference, and every wheel event that bottoms out inside the widget
+     drags the page. */
+  height: calc(100dvh - var(--wp-chrome) - var(--wp-banner, 0px));
+  min-height: 680px;
+  overflow: hidden;
+  /* Without this a scroll that reaches the end of one of the widget's
+     inner lists chains to the page. */
+  overscroll-behavior: contain;
+}
+
+/* Belt and braces: with nothing to scroll, the chain has nowhere to go even
+   if the height is a pixel or two out. Above the mount's own floor only, so
+   a short window can still reach the bottom of the app. */
+@media screen and (min-height: 680px) {
+  body.waterpark-databrowser-page {
+    overflow: hidden;
+  }
+}
+
+/* The site accent (src/styles/theme.css). */
+body.waterpark-databrowser-page .freva-db {
+  --accent: var(--sl-color-accent);
+  --accent-2: var(--sl-color-accent-high);
+}
+
+/* Loader error fallback */
+.waterpark-databrowser-error {
+  margin: 2rem auto;
+  max-width: 40rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-left: 4px solid var(--sl-color-accent);
+  border-radius: 6px;
+  color: var(--sl-color-white);
+  background: var(--sl-color-black);
+  font-size: var(--sl-text-sm);
+}

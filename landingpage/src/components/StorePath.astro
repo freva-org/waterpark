@@ -1,0 +1,66 @@
+---
+/**
+ * The store URL, taken apart. Every store on the hub has this shape, so
+ * showing it once with its parts named answers most "where is X" questions.
+ */
+const parts = [
+  { text: "reanalysis", name: "project" },
+  { text: "healpix", name: "grid" },
+  { text: "era5", name: "dataset" },
+  { text: "P1M", name: "frequency" },
+  { text: "level_5.zarr", name: "level" },
+];
+---
+
+<figure class="wp-path" aria-label="The parts of a store URL">
+  <span class="scheme">s3://</span>
+  {
+    parts.map((part, i) => (
+      <>
+        {i > 0 && <span class="sep">/</span>}
+        <span class="part">
+          <code>{part.text}</code>
+          <span class="name">{part.name}</span>
+        </span>
+      </>
+    ))
+  }
+</figure>
+
+<style>
+  .wp-path {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.6rem 0.15rem;
+    margin: 0;
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-sm);
+  }
+  .scheme,
+  .sep {
+    padding-top: 0.3rem;
+    color: var(--sl-color-gray-3);
+  }
+  .part {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  code {
+    padding: 0.2rem 0.45rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.3rem;
+    background: var(--sl-color-gray-6);
+    color: var(--sl-color-white);
+  }
+  .part:nth-child(n + 8) code {
+    border-color: color-mix(in srgb, var(--wp-amber) 60%, transparent);
+  }
+  .name {
+    font-family: var(--sl-font);
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+  }
+</style>

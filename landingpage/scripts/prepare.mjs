@@ -54,7 +54,7 @@ function packageRoot(name) {
   }
 }
 
-// Material's root font size is 125%; the Freva UI's rem lengths are rewritten onto --wp-rem (assets/freva.css).
+// The Freva UI's rem lengths are rewritten onto --wp-rem (src/styles/freva.css), so the host decides what a rem is.
 function remToWpRem(text) {
   return text
     .split(/(@(?:media|container|supports)[^{]*\{)/)
@@ -155,7 +155,7 @@ async function prepareStac() {
   const postcss = (await import(pathToFileURL(require.resolve("postcss")).href)).default;
   const prefixer = (await import(pathToFileURL(require.resolve("postcss-prefix-selector")).href)).default;
   const scope = "#stac-browser-mount";
-  // Contain Bootstrap inside the mount so it cannot restyle Material.
+  // Contain Bootstrap inside the mount so it cannot restyle the site.
   const transform = (prefix, selector, prefixed, _file, rule) => {
     const s = selector.trim();
     if (rule?.parent?.type === "atrule" && /keyframes$/i.test(rule.parent.name)) return selector;

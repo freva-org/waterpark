@@ -1,27 +1,23 @@
 # Development image for the Waterpark landing page.
 #
-# Serves mkdocs with live reload, with the Freva parts `just site::prepare` left in .prepared/.
+# Serves the Astro Starlight site with live reload. The Freva parts are
+# whatever `just site::prepare` left in .prepared/; without them the site
+# still serves, with plain code blocks and the widget pages' fallback text.
 
-FROM docker.io/library/python:3.12-slim
+FROM docker.io/library/node:22-slim
 
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# libcairo2 and the image libraries: mkdocs-material's social plugin needs
-# them at runtime, and the failure without them is an unhelpful import error.
+# python3 renders the example pages (scripts/build_examples.py --render,
+# offline, standard library only); git is for nothing at runtime but keeps
+# npm quiet about lifecycle scripts that probe for it.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
-        libcairo2 \
-        libfreetype6 \
-        libjpeg62-turbo \
-        libpng16-16 \
+        git \
+        python3 \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /work
+ENV ASTRO_TELEMETRY_DISABLED=1
 
-COPY requirements-docs.txt ./
-RUN pip install --no-cache-dir -r requirements-docs.txt
+WORKDIR /work
 
 COPY entrypoint.dev.sh /usr/local/bin/docs-entrypoint
 RUN chmod +x /usr/local/bin/docs-entrypoint

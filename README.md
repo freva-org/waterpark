@@ -3,8 +3,9 @@
 The landing page and backend for [waterpark.dkrz.de](https://waterpark.dkrz.de),
 the HEALPix data hub on S3.
 
-Multiple things live here. The **landing page** is a mkdocs-material site
-published to `gh-pages` and served by nginx on the VM. The **API** is a
+Multiple things live here. The **landing page** is an
+[Astro Starlight](https://starlight.astro.build) site published to
+`gh-pages` and served by nginx on the VM. The **API** is a
 small FastAPI service behind the same nginx, serving `/api`.
 
 The `grid-doctor` package and its technical documentation live in
@@ -15,7 +16,7 @@ pages are shared between the two sites; see [Shared pages](#shared-pages).
 
 | | |
 |---|---|
-| `landingpage/` | mkdocs site: content, theme overrides, build tooling |
+| `landingpage/` | the site: pages, components, theme, build tooling |
 | `catalogue/` | crawler configs, and the service that delivers what CI publishes |
 | `.dev/` | development stack: compose file, proxy config, secrets |
 | `justfile` | entry point for everything below; `just` lists every recipe |
@@ -74,25 +75,23 @@ nothing can reach the API on a second port and start needing CORS.
 | service | what it is |
 |---|---|
 | `proxy` | Caddy. `/api/*` to the API, `/mailbox/*` to mailpit, the rest to the docs |
-| `docs` | mkdocs serve with live reload; `data`, `shared`, `assets` mounted read-only |
+| `docs` | `astro dev` with live reload, on the `landingpage/` checkout |
 | `mailbox` | mailpit |
 
-Source is mounted read-only and everything the containers write goes to
-named volumes, so nothing lands root-owned in your checkout.
+What the containers install and cache (`node_modules`, `.astro`, `.cache`)
+goes to named volumes. The one exception is the pages the docs container
+generates into `landingpage/src/content/docs/`, which are gitignored there
+and are what `just site::serve` leaves on the host too.
 
 ### Live reload
 
-Editing anything under `landingpage/data`, `landingpage/shared`.
-
-Adding a **new** file to the docs needs one service restarted:
+Editing or adding anything under `landingpage/src/` reloads the page.
+Pages generated from `landingpage/shared/` and `landingpage/examples/` are
+built when the service starts, so a change there needs:
 
 ```sh
 just restart docs
 ```
-
-The docs container assembles `.build/data` at startup as a farm of
-symlinks into the three source trees, which is why edits are picked up but
-new files are not. Never edit anything under `.build/`; it is generated.
 
 ### Commands
 
@@ -118,20 +117,22 @@ The docs site has its own justfile in `landingpage/`, usable on its own
 ```sh
 just site::prepare   # the Freva parts (Python, notebook, tree, STAC and Data Browser) into landingpage/.prepared
 just site::serve     # docs alone on :8000, no listmonk or mailbox
-just site::build     # strict build into landingpage/site
+just site::build     # build into landingpage/dist, every internal link checked
+just site::deploy    # build, then publish dist/ to gh-pages (CI normally does this)
 ```
 
 ### When something is wrong
 
 Start with `just doctor`. It prints the parsed compose config, the
 container list including exited ones, published ports, recent logs from
-proxy, docs, listmonk and the mailbox, and what is actually in `.build/data`.
+proxy, docs, listmonk and the mailbox, and which generated pages the docs
+container is serving.
 
 - **A 404 in the browser.** If the page says "This response came from
   Caddy", the proxy could not reach an upstream container. If it does not,
-  the 404 came from mkdocs or the API and the proxy is fine.
+  the 404 came from the site or the API and the proxy is fine.
 - **Nothing on `:8000` at all.** Check for a stray process holding the
-  port: `pgrep -af "mkdocs serve"`.
+  port: `pgrep -af "astro dev"`.
 - **Emails not arriving.** They are in the mailbox, not your inbox.
   `just mail` settles it either way.
 - **No log output from the API.** The application logger defaults to
@@ -185,7 +186,7 @@ Execution and rendering are deliberately separate, for the same reason the
 shared pages are vendored rather than fetched.
 
 ```
-python scripts/build_examples.py --render --out .build/data  # offline, every docs build
+python scripts/build_examples.py --render    # offline, every docs build (npm run content)
 just site::examples          # run the examples, refresh assets/examples/
 just site::examples 03       # just one
 just site::examples-check    # which figures no longer match their example
@@ -197,8 +198,25 @@ a bucket being migrated shows up as a red `gallery` run rather than as a
 documentation build nobody can merge past. A page whose figure is missing
 still builds, with a notice in place of the plot.
 
-Adding an example means adding a line to the `nav:` block in `mkdocs.yml`.
-The strict build says so clearly if you forget.
+A new example appears in the sidebar and the header menu on its own,
+ordered by the number its file name starts with. The gallery page itself
+is `landingpage/examples/index.md`, written by hand; the card grid goes
+where its `<!-- examples-cards -->` marker is.
+
+### Pages and navigation
+
+Pages written for the site live in `landingpage/src/content/docs/`, in
+Starlight's Markdown (`.md`, or `.mdx` to use components). The sidebar and
+the header menus both come from `landingpage/src/nav.mjs`, and a page's
+label there is its own title. Pages from `shared/` and `examples/` arrive
+in Material for MkDocs' Markdown and are translated on every build by
+`landingpage/scripts/sync-content.mjs`; the files it writes are listed in
+the `.gitignore` it leaves in `src/content/docs/`.
+
+The landing page is `src/content/docs/index.mdx`, the colours and type are
+in `src/styles/theme.css`, and the Freva widgets (dataset tree, Data
+Browser, STAC Browser, runnable code, notebook links) are wired in by
+`landingpage/integrations/freva.mjs`.
 
 ### Dataset listing
 
@@ -214,7 +232,7 @@ from the Actions tab.
 
 | workflow | runs on | what it does |
 |---|---|---|
-| `docs` | changes under `landingpage/` | strict mkdocs build; publishes to `gh-pages` from `main` |
+| `docs` | changes under `landingpage/` | `just check` (build, links, spelling, shared pin); publishes to `gh-pages` from `main` |
 | `smoke` | changes to either, or to `dev/` | brings up the compose stack and runs the `stack`-marked tests |
 | `catalogue` | changed dataset configs, and daily | validates them, crawls S3, publishes a complete snapshot, and files one issue per broken dataset |
 | `sync-shared` | weekly, or on demand | re-pins the shared pages and opens a pull request |
@@ -229,4 +247,5 @@ The dev stack above is for development only. Production is Ansible plus
 Podman Quadlet with nginx in front.
 
 The docs deploy from CI to `gh-pages`, which nginx serves from a shallow
-clone.
+clone. The branch is always a single commit holding the built site
+(`landingpage/scripts/publish-gh-pages.sh`), so that clone stays small.

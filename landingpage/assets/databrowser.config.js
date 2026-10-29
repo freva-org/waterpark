@@ -68,16 +68,16 @@ export default {
   },
 
 
-  // Theme: match the Waterpark dominant colour
-  // The widget's OWN day/night toggle is disabled
+  // Theme: the site accent (src/styles/theme.css). The widget's OWN day/night
+  // toggle is disabled; web/site.js keeps it in step with the site's.
   features: {
     themeToggle: false,
     footer: false,
   },
   theme: {
     both: {
-      accent: "var(--md-primary-fg-color, #009688)",
-      "accent-2": "var(--md-primary-fg-color--dark, #00695c)",
+      accent: "var(--sl-color-accent, #0e7c7b)",
+      "accent-2": "var(--sl-color-accent-high, #0a4f50)",
     },
   },
 };

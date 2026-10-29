@@ -1,5 +1,5 @@
 # Fast, local checks before a commit lands. Deliberately a subset of what
-# CI runs: anything slow or needing the network stays in tox, so committing
+# CI runs: anything slow or needing the network stays in just/tox, so committing
 # never blocks on a container build or a GitHub fetch.
 #
 #   just hooks              install (once per clone)
@@ -35,10 +35,6 @@ repos:
         # not to police the asset directory.
         args: [--maxkb=5120]
       - id: check-yaml
-        # mkdocs.yml uses !ENV and !!python/name:, which are custom tags the
-        # plain YAML loader rejects. Checking the workflows is the point
-        # here anyway.
-        exclude: ^landingpage/mkdocs\.yml$
       - id: check-toml
       - id: check-executables-have-shebangs
       - id: mixed-line-ending

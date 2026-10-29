@@ -37,7 +37,7 @@ markdown. It is pure, fast, and offline, so it runs in every docs build and
 an edit to an example's prose reaches the site without anybody running
 anything against S3.
 
-The index page is NOT generated. ``data/examples/index.md`` is an ordinary
+The index page is NOT generated. ``examples/index.md`` is an ordinary
 page, written and edited by hand like every other page on the site, and this
 script only substitutes the card grid into it where it finds the marker::
 
@@ -57,7 +57,7 @@ network to find out.
 
 Usage
 -----
-    python scripts/build_examples.py --render --out .build/data
+    python scripts/build_examples.py --render [--out .cache/examples]
     python scripts/build_examples.py --run [--only 03] [--continue-on-error]
     python scripts/build_examples.py --check
     python scripts/build_examples.py --notebooks DIR [--site-url URL]
@@ -87,9 +87,9 @@ EXAMPLES = ROOT / "examples"
 FIGURES = ROOT / "assets" / "examples"
 LOCK = ROOT / "examples.lock"
 
-#: Pages land here inside the assembled docs tree, not in ``data/``. They are
-#: generated, and generated files do not belong in a source directory.
-DEFAULT_OUT = ROOT / ".build" / "data"
+#: Pages land here, not in ``src/content/docs/``: they are generated, and
+#: scripts/sync-content.mjs translates them into the site from here.
+DEFAULT_OUT = ROOT / ".cache" / "examples"
 
 SECTION = re.compile(r"^#\s*%%\s*(?:\[(?P<kind>\w+)\])?\s*$")
 
@@ -305,23 +305,22 @@ def render_cards(examples: Sequence[Example]) -> str:
 def inject_cards(examples: Sequence[Example], out: Path) -> None:
     """Substitute the card grid into the hand-written index page.
 
-    The page has already been copied into the build tree by docs-prep. In
-    ``just serve`` that copy is a *symlink* back to ``data/examples/index.md``
-    (docs-prep uses ``cp -as`` so mkdocs' watcher sees edits), so the file is
-    replaced rather than written through: opening it for writing would edit
-    the source file in place and commit the generated cards to git.
+    The page has already been copied into the output tree by
+    scripts/sync-content.mjs. The file is replaced rather than written
+    through, so that a symlinked copy could never edit ``examples/index.md``
+    in place and commit the generated cards to git.
     """
     page = out / "examples" / "index.md"
     if not page.exists():
         raise SystemExit(
             f"[examples] {page} is missing. The index is a normal page: create "
-            f"data/examples/index.md and put {CARD_MARKER} where the cards go."
+            f"examples/index.md and put {CARD_MARKER} where the cards go."
         )
 
     text = page.read_text()
     if CARD_MARKER not in text:
         raise SystemExit(
-            f"[examples] no {CARD_MARKER} in data/examples/index.md, so there is "
+            f"[examples] no {CARD_MARKER} in examples/index.md, so there is "
             "nowhere to put the cards. Add the marker on a line of its own."
         )
 
@@ -641,7 +640,7 @@ def main() -> int:
         "--out",
         type=Path,
         default=DEFAULT_OUT,
-        help="assembled docs tree (default: .build/data)",
+        help="where --render writes the pages (default: .cache/examples)",
     )
     parser.add_argument("--only", help="restrict to examples matching this")
     parser.add_argument(
@@ -656,8 +655,8 @@ def main() -> int:
     if args.render:
         if not args.out.exists():
             raise SystemExit(
-                f"[examples] {args.out} does not exist. This runs after the docs "
-                "tree is assembled; use tox rather than calling it directly."
+                f"[examples] {args.out} does not exist. scripts/sync-content.mjs "
+                "prepares it (npm run content); call that rather than this."
             )
         write_pages(examples, args.out)
         return 0

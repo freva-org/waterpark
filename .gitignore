@@ -5,24 +5,23 @@
 # not get swallowed silently. Generic build noise stays unanchored.
 
 # --- generated documentation ------------------------------------------------
-# .build is assembled by tox [docs-prep] and by the docs container: a farm of
-# symlinks into data/, shared/ and assets/. Never edit anything in there, it
-# is a copy.
-/landingpage/.build/
-/landingpage/site/
-/landingpage/site-data/
+# The built site, and Astro's own state. The pages scripts/sync-content.mjs
+# generates into src/content/docs/ are listed in the .gitignore it writes
+# there, not here, so the list can never go stale.
+/landingpage/dist/
+/landingpage/.astro/
 
 # The Freva parts, built by scripts/prepare.mjs.
 /landingpage/.prepared/
 /landingpage/.python-wheels/
 
 # Where an example drops its figure when run directly rather than through
-# scripts/build_gallery.py, which runs it in a scratch directory and collects
-# the result into assets/gallery/.
+# scripts/build_examples.py, which runs it in a scratch directory and
+# collects the result into assets/examples/.
 /landingpage/examples/*.png
 
-# NOT ignored, on purpose: landingpage/assets/gallery/ holds the figures the
-# gallery workflow produces. Committing them is what keeps the docs build
+# NOT ignored, on purpose: landingpage/assets/examples/ holds the figures the
+# examples workflow produces. Committing them is what keeps the docs build
 # offline and makes a changed plot show up as a reviewable diff.
 
 # NOT ignored, on purpose: landingpage/shared/ holds the pages vendored from

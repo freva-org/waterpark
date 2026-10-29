@@ -1,0 +1,70 @@
+---
+/**
+ * Announcement bar.
+ *
+ * Starlight's banner only knows per-page frontmatter. Waterpark's notices
+ * come from /api/announcements at page load (a JSON file nginx serves off
+ * disk), so the bar is a mount point that src/scripts/announce.js fills.
+ *
+ * The bar's height is published as --wp-banner, so the full-height app
+ * pages (Data Browser, STAC Browser) can size themselves below it.
+ */
+import Default from "@astrojs/starlight/components/Banner.astro";
+
+// Empty in production: nginx serves the site and the API on one origin.
+const apiBase = process.env.WP_API_BASE ?? "";
+---
+
+<Default />
+<div class="wp-announce-bar"><div data-wp-announce hidden></div></div>
+
+{apiBase && <script is:inline define:vars={{ apiBase }}>window.WP_API_BASE = apiBase;</script>}
+<script>
+  import "../scripts/announce.js";
+
+  const bar = document.querySelector<HTMLElement>(".wp-announce-bar");
+  if (bar) {
+    const publish = () => document.documentElement.style.setProperty("--wp-banner", `${bar.offsetHeight}px`);
+    new ResizeObserver(publish).observe(bar);
+    publish();
+  }
+</script>
+
+<style>
+  .wp-announce-bar:has([data-wp-announce][hidden]) {
+    display: none;
+  }
+  .wp-announce-bar :global(.wp-announce__item) {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem var(--sl-nav-pad-x);
+    font-size: var(--sl-text-sm);
+    color: var(--wp-navy);
+    background: var(--wp-amber);
+  }
+  .wp-announce-bar :global(.wp-announce__item--outage) {
+    color: #fff;
+    background: #b42318;
+  }
+  .wp-announce-bar :global(.wp-announce__icon svg),
+  .wp-announce-bar :global(.wp-announce__close svg) {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+  }
+  .wp-announce-bar :global(.wp-announce__text) {
+    flex: 1;
+  }
+  .wp-announce-bar :global(.wp-announce__link) {
+    color: inherit;
+    font-weight: 600;
+  }
+  .wp-announce-bar :global(.wp-announce__close) {
+    padding: 0.25rem;
+    border: 0;
+    color: inherit;
+    background: none;
+    cursor: pointer;
+  }
+</style>

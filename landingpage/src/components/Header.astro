@@ -1,0 +1,237 @@
+---
+/**
+ * Starlight's header with the site menus added.
+ *
+ * The menus are not configured anywhere: they are the resolved sidebar
+ * (src/nav.mjs), so a page added to the sidebar shows up here too. A group
+ * with one link renders as a plain link rather than a menu of one.
+ */
+import Default from "@astrojs/starlight/components/Header.astro";
+
+type Entry = {
+  type: "link" | "group";
+  label: string;
+  href?: string;
+  isCurrent?: boolean;
+  entries?: Entry[];
+};
+
+const links = (entry: Entry): Entry[] =>
+  entry.type === "link" ? [entry] : (entry.entries ?? []).flatMap(links);
+
+const menus = (Astro.locals.starlightRoute.sidebar as Entry[]).map((entry) => {
+  const items = links(entry);
+  return {
+    label: entry.label,
+    items,
+    current: items.some((item) => item.isCurrent),
+  };
+});
+---
+
+<div class="wp-header">
+  <Default />
+  <nav class="wp-menus" aria-label="Site">
+    <ul>
+      {
+        menus.map((menu) =>
+          menu.items.length === 1 ? (
+            <li>
+              <a
+                class="wp-menu-trigger"
+                href={menu.items[0].href}
+                aria-current={menu.items[0].isCurrent ? "page" : undefined}
+              >
+                {menu.label}
+              </a>
+            </li>
+          ) : (
+            <li class="wp-menu" data-wp-menu>
+              <button
+                class="wp-menu-trigger"
+                type="button"
+                aria-expanded="false"
+                data-current={menu.current || undefined}
+              >
+                {menu.label}
+                <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+                  <path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <ul class="wp-menu-panel">
+                {menu.items.map((item) => (
+                  <li>
+                    <a href={item.href} aria-current={item.isCurrent ? "page" : undefined}>
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          )
+        )
+      }
+    </ul>
+  </nav>
+</div>
+
+<script>
+  // Click to open, Escape or a click elsewhere to close. Hover is left to
+  // CSS so pointer users never have to click at all.
+  const menus = [...document.querySelectorAll<HTMLElement>("[data-wp-menu]")];
+  const close = (except?: HTMLElement) => {
+    for (const menu of menus) {
+      if (menu === except) continue;
+      menu.querySelector("button")?.setAttribute("aria-expanded", "false");
+    }
+  };
+  for (const menu of menus) {
+    const button = menu.querySelector("button")!;
+    button.addEventListener("click", () => {
+      const open = button.getAttribute("aria-expanded") !== "true";
+      close(menu);
+      button.setAttribute("aria-expanded", String(open));
+    });
+    menu.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      button.setAttribute("aria-expanded", "false");
+      button.focus();
+    });
+  }
+  document.addEventListener("click", (event) => {
+    if (!(event.target as Element).closest("[data-wp-menu]")) close();
+  });
+</script>
+
+<style>
+  .wp-header {
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+  .wp-header > :global(.header) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* The menus sit between the site title and search. Below 72rem the
+     sidebar (behind the menu button) carries the same links. */
+  .wp-menus {
+    display: none;
+  }
+  @media (min-width: 72rem) {
+    .wp-header {
+      display: grid;
+      grid-template-columns: auto auto 1fr auto;
+      gap: 1.5rem;
+    }
+    .wp-header > :global(.header) {
+      display: contents;
+    }
+    .wp-header > :global(.header) > :global(*),
+    .wp-menus {
+      grid-row: 1;
+    }
+    .wp-header > :global(.header) > :global(.title-wrapper) {
+      grid-column: 1;
+    }
+    .wp-menus {
+      display: block;
+      grid-column: 2;
+    }
+    .wp-header > :global(.header) > :global(:nth-child(2)) {
+      grid-column: 3;
+      justify-self: end;
+    }
+    .wp-header > :global(.header) > :global(.right-group) {
+      grid-column: 4;
+    }
+  }
+
+  .wp-menus > ul {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .wp-menu {
+    position: relative;
+  }
+  .wp-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.6rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background: none;
+    color: var(--sl-color-gray-2);
+    font: inherit;
+    font-size: var(--sl-text-sm);
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .wp-menu-trigger:hover,
+  .wp-menu:hover .wp-menu-trigger,
+  .wp-menu-trigger[aria-expanded="true"] {
+    color: var(--sl-color-white);
+    background: var(--sl-color-gray-6);
+  }
+  .wp-menu-trigger[data-current],
+  .wp-menu-trigger[aria-current="page"] {
+    color: var(--sl-color-white);
+    box-shadow: inset 0 -2px 0 var(--sl-color-accent);
+  }
+  .wp-menu-trigger svg {
+    transition: transform 0.15s ease;
+  }
+  .wp-menu-trigger[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+
+  .wp-menu-panel {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    z-index: 10;
+    display: none;
+    min-width: 15rem;
+    margin: 0;
+    padding: 0.375rem;
+    list-style: none;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    background: var(--sl-color-black);
+    box-shadow: var(--sl-shadow-md);
+  }
+  /* A bridge over the gap, so moving the pointer down does not close it. */
+  .wp-menu-panel::before {
+    content: "";
+    position: absolute;
+    inset: -0.375rem 0 auto;
+    height: 0.375rem;
+  }
+  .wp-menu:hover .wp-menu-panel,
+  .wp-menu-trigger[aria-expanded="true"] + .wp-menu-panel {
+    display: block;
+  }
+  .wp-menu-panel a {
+    display: block;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.25rem;
+    color: var(--sl-color-gray-2);
+    font-size: var(--sl-text-sm);
+    text-decoration: none;
+  }
+  .wp-menu-panel a:hover {
+    color: var(--sl-color-white);
+    background: var(--sl-color-gray-6);
+  }
+  .wp-menu-panel a[aria-current="page"] {
+    color: var(--sl-color-accent-high);
+    background: var(--sl-color-accent-low);
+  }
+</style>

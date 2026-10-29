@@ -1,0 +1,95 @@
+---
+/**
+ * The collections on the hub, rendered at build time from the same
+ * assets/waterpark-datasets.json that scripts/refresh_buckets.py keeps
+ * current. web/site.js mounts the live dataset tree (@freva-org/dataset-tree)
+ * into [data-wp-dataset-tree]; once it has, the static list steps aside.
+ * Without JavaScript, or without the Freva parts, the list is what shows,
+ * and it is what search engines read either way.
+ */
+import catalogue from "../../assets/waterpark-datasets.json";
+
+type Entry = { title: string; label: string; href?: string; locked?: string };
+const datasets = catalogue.datasets as Record<string, Entry>;
+const rows = catalogue.buckets.map((bucket) => ({ bucket, ...datasets[bucket] }));
+---
+
+<div class="wp-datasets not-content" data-portal-tree-panel>
+  <div class="tree" data-wp-dataset-tree></div>
+  <ul class="static">
+    {
+      rows.map((row) => (
+        <li data-locked={row.locked ? "" : undefined}>
+          <span class="name">
+            {row.href ? <a href={row.href}>{row.title}</a> : row.title}
+            {row.locked && <span class="soon">{row.locked}</span>}
+          </span>
+          <span class="label">{row.label}</span>
+          <code class="path">s3://{row.bucket}/healpix/</code>
+        </li>
+      ))
+    }
+  </ul>
+</div>
+
+<style>
+  .wp-datasets:has(.tree > :global(*)) .static {
+    display: none;
+  }
+  ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
+    gap: 0 2.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "name path" "label label";
+    gap: 0.1rem 1rem;
+    align-items: baseline;
+    margin: 0;
+    padding: 0.8rem 0;
+    border-top: 1px solid var(--sl-color-gray-5);
+  }
+  .name {
+    grid-area: name;
+    font-weight: 600;
+    color: var(--sl-color-white);
+  }
+  .name a {
+    color: inherit;
+    text-decoration-color: var(--sl-color-gray-4);
+    text-underline-offset: 0.2em;
+  }
+  .name a:hover {
+    text-decoration-color: var(--sl-color-accent);
+  }
+  .label {
+    grid-area: label;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-3);
+  }
+  .path {
+    grid-area: path;
+    padding: 0;
+    background: none;
+    border: 0;
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+  }
+  .soon {
+    margin-left: 0.5rem;
+    padding: 0.05rem 0.4rem;
+    border: 1px solid var(--sl-color-gray-4);
+    border-radius: 999px;
+    font-size: var(--sl-text-xs);
+    font-weight: 500;
+    color: var(--sl-color-gray-3);
+  }
+  li[data-locked] .path {
+    opacity: 0.5;
+  }
+</style>

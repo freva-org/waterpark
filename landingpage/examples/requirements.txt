@@ -5,7 +5,7 @@
 # Before adding a line, check whether the thing it does is four lines of
 # numpy, because on this grid it usually is.
 #
-# Kept separate from requirements-docs.txt because the two never run in the
+# Kept separate from the site's dependencies because the two never run in the
 # same place: the docs build renders committed figures and never touches S3,
 # and the examples workflow runs the examples and never builds the site.
 

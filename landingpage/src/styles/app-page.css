@@ -1,0 +1,52 @@
+/*
+ * Pages that are a full-bleed application rather than a document: the Data
+ * Browser and the STAC Browser. The page content is a single `.wp-app`
+ * element that web/site.js mounts the application into.
+ *
+ * Keyed on the content (:has) rather than on a class set by a script, so the
+ * layout is right from the first paint.
+ *
+ * --wp-chrome is what is pinned above the app (Starlight's header), and
+ * --wp-banner the announcement bar when one is showing (Banner.astro).
+ */
+:root:has(.wp-app) {
+  --sl-content-width: 100%;
+  --wp-chrome: var(--sl-nav-height);
+}
+
+/* The title stays in the document for screen readers and search. */
+:root:has(.wp-app) main .content-panel:has(> .sl-container > h1) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+:root:has(.wp-app) main .content-panel {
+  padding: 0;
+  border: 0;
+}
+:root:has(.wp-app) main {
+  padding: 0;
+}
+:root:has(.wp-app) main footer {
+  display: none;
+}
+
+.sl-markdown-content .wp-app {
+  margin: 0;
+  width: 100%;
+}
+
+/* What shows until the application mounts, and instead of it when the
+   Freva parts were not prepared or failed to load. */
+.wp-app-fallback {
+  max-width: 40rem;
+  margin: 3rem auto;
+  padding-inline: var(--sl-content-pad-x);
+  color: var(--sl-color-gray-2);
+}
+.wp-app:has(> [id$="-mount"] > *) .wp-app-fallback {
+  display: none;
+}

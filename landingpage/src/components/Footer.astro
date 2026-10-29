@@ -1,0 +1,36 @@
+---
+/**
+ * Starlight's footer (pagination, edit link) plus the one line every page
+ * ends with. Support and the newsletter used to be listed twice, in
+ * `copyright` and `extra.social`; this is now the only place.
+ */
+import Default from "@astrojs/starlight/components/Footer.astro";
+
+const SUPPORT = "waterpark@support.dkrz.de";
+---
+
+<Default />
+<p class="wp-footer">
+  <span>Questions or problems? Write to <a href={`mailto:${SUPPORT}`}>{SUPPORT}</a>.</span>
+  <a href="/newsletter/">Get the newsletter</a>
+</p>
+
+<style>
+  .wp-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem 2rem;
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--sl-color-gray-5);
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-3);
+  }
+  .wp-footer a {
+    color: var(--sl-color-gray-2);
+  }
+  .wp-footer a:hover {
+    color: var(--sl-color-accent-high);
+  }
+</style>

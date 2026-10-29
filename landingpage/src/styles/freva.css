@@ -1,0 +1,223 @@
+/*
+ * The design tokens the shared Freva UI reads (dataset tree, Data Browser,
+ * STAC Browser, Python playground, notebook controls).
+ *
+ * Neutrals, accent and fonts point at Starlight's variables, so the widgets
+ * follow the site theme and its light/dark switch (Starlight sets
+ * data-theme on <html>). What is left hard-coded below is what Starlight
+ * has no equivalent for: syntax colours, status colours, the terminal's
+ * chrome, radii.
+ *
+ * --wp-rem is the root size the Freva UI's rem lengths are rewritten onto
+ * (scripts/prepare.mjs). Starlight keeps the browser's 16px root, so it is
+ * plain 1rem; under Material it had to undo a 125% root.
+ */
+:root {
+  --wp-rem: 1rem;
+  --accent: var(--sl-color-accent);
+  --accent-hi: var(--sl-color-accent-high);
+  --accent-text: var(--sl-color-accent-high);
+  --accent-ink: var(--sl-color-black);
+  --accent-hi-ink: var(--sl-color-black);
+  --bg: var(--sl-color-black);
+  --surface: var(--sl-color-gray-6);
+  --surface-2: var(--sl-color-black);
+  --tile: var(--sl-color-gray-6);
+  --chip: var(--sl-color-gray-6);
+  --ink: var(--sl-color-white);
+  --ink-2: var(--sl-color-gray-2);
+  --muted: var(--sl-color-gray-3);
+  --line: var(--sl-color-gray-5);
+  --line-2: var(--sl-color-gray-4);
+  --font-ui: var(--sl-font);
+  --font-display: var(--sl-font);
+  --font-mono: var(--sl-font-mono);
+  --portal-color-accent: var(--sl-color-accent);
+  --scrollbar-thumb: var(--sl-color-gray-4);
+  --scrollbar-thumb-hover: var(--sl-color-accent);
+}
+
+:root {
+  --chrome-bg: #00796b;
+  --chrome-chip: #00685c;
+  --chrome-chip-hi: #005a4f;
+  --chrome-ink: #fff;
+  --chrome-ink-2: #e6f2f0;
+  --chrome-line: #339489;
+  --chrome-line-hi: #61aca3;
+  --chrome-max: 1440px;
+  --chrome-muted: #e6f2f0;
+  --chrome-surface: #00665a;
+  --content-max: 1440px;
+  --danger: #8c4a3d;
+  --danger-bg: #faf7f6;
+  --footer-bg: #00796b;
+  --footer-chip: #00685c;
+  --footer-h-app: 34px;
+  --footer-line: #339489;
+  --footer-line-hi: #61aca3;
+  --footer-muted: #e6f2f0;
+  --footer-strong: #fff;
+  --footer-surface: #00665a;
+  --footer-text: #e6f2f0;
+  --header-bg: #00796b;
+  --header-h-app: 48px;
+  --header-h-app-scrolled: 44px;
+  --header-h-scrolled: 54px;
+  --portal-color-accent-contrast: #f6f5f1;
+  --portal-color-background: #0b1522;
+  --portal-color-border: #22384d;
+  --portal-color-surface: #101d2c;
+  --portal-color-text: #eaf1f7;
+  --portal-color-text-muted: #93a6b8;
+  --portal-corner-style: soft;
+  --portal-density: comfortable;
+  --portal-heading-scale: 1.4;
+  --portal-measure: 0px;
+  --portal-radius: 6px;
+  --portal-space: 1rem;
+  --r-10: 10px;
+  --r-11: 11px;
+  --r-12: 12px;
+  --r-14: 14px;
+  --r-16: 16px;
+  --r-6: 6px;
+  --r-8: 8px;
+  --r-9: 9px;
+  --r-pill: 999px;
+  --shadow-card: 0 1px 2px #14202c0a, 0 18px 40px -28px #14202c47;
+  --shadow-footer: 0 -14px 34px -24px #14202c8c;
+  --shadow-panel: 0 14px 34px #14202c1f;
+  --shell-pad: clamp(16px, 2.4vw, 48px);
+  --syn-added: #2f6f4f;
+  --syn-added-bg: #f8faf9;
+  --syn-comment: #5d6a5d;
+  --syn-keyword: #7a3b8f;
+  --syn-name: #1b4f72;
+  --syn-number: #9f5229;
+  --syn-output: #67675f;
+  --syn-punct: #5b6470;
+  --syn-removed: #8c4a3d;
+  --syn-removed-bg: #faf7f6;
+  --syn-string: #2f6f4f;
+  --warning: #7d6119;
+  --warning-bg: #faf9f7;
+}
+.portal-overlay-root {
+  font-family: var(--font-ui);
+  font-size: calc(0.9375 * var(--wp-rem));
+  line-height: 1.5;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+:root[data-theme="dark"] {
+  --danger: #d9948a;
+  --danger-bg: #2b1d1a;
+  --syn-added: #90d6ab;
+  --syn-added-bg: #16261d;
+  --syn-comment: #8b9c8b;
+  --syn-keyword: #d3a2e8;
+  --syn-name: #8fc4f0;
+  --syn-number: #eaa77a;
+  --syn-output: #8794a1;
+  --syn-punct: #9aa5b1;
+  --syn-removed: #e39a90;
+  --syn-removed-bg: #2b1d1a;
+  --syn-string: #90d6ab;
+  --warning: #d8bd77;
+  --warning-bg: #2a2317;
+}
+data-inspector.wp-inspector {
+  --di-bg: var(--surface);
+  --di-fg: var(--ink);
+  --di-muted: var(--muted);
+  --di-border: var(--line-2, var(--line));
+  --di-surface: var(--surface-2);
+  --di-accent: var(--accent);
+  --xr-font-color0: var(--ink);
+  --xr-font-color2: var(--muted);
+  --xr-font-color3: var(--muted);
+  --xr-border-color: var(--line-2, var(--line));
+  --xr-disabled-color: var(--muted);
+  --xr-background-color: var(--surface);
+  --xr-background-color-row-even: var(--surface);
+  --xr-background-color-row-odd: var(--surface-2);
+  --xr-chunk-face: var(--accent);
+  --xr-chunk-top: color-mix(in srgb, var(--accent) 68%, #fff);
+  --xr-chunk-side: color-mix(in srgb, var(--accent) 80%, #000);
+  --xr-chunk-edge: color-mix(in srgb, var(--accent) 38%, #fff);
+}
+data-inspector.wp-inspector .di-zarr-row {
+  display: none;
+}
+data-inspector.wp-inspector .di-header {
+  background: var(--chrome-bg);
+  border-bottom: none;
+}
+data-inspector.wp-inspector .di-header :is(.di-title, .di-title-ico, .di-pathbar-label, .di-muted, .di-close) {
+  color: var(--chrome-ink);
+}
+data-inspector.wp-inspector .di-header .di-close:hover {
+  background: var(--chrome-chip);
+  color: var(--chrome-ink);
+}
+data-inspector.wp-inspector .di-header .di-btn-primary {
+  background: var(--chrome-chip);
+  border-color: var(--chrome-line-hi);
+  color: var(--chrome-ink);
+}
+data-inspector.wp-inspector .di-header .di-btn-primary:hover:not(:disabled) {
+  filter: none;
+  background: var(--chrome-chip-hi);
+}
+data-inspector.wp-inspector .di-header .di-btn-split {
+  border-left-color: var(--chrome-line-hi);
+}
+data-inspector.wp-inspector .xr-wrap {
+  max-width: none;
+}
+
+/* Runnable code blocks (integrations/freva.mjs), drawn like the site's
+   other code blocks. The highlighting is Shiki's, done at build time with
+   both themes as variables; the editor takes over once a block is edited. */
+.portal-code-figure,
+.portal-document-notebook {
+  --r-6: 0.375rem;
+  --r-8: 0.5rem;
+}
+.sl-markdown-content .portal-code-figure {
+  margin-block: 1.5rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.portal-code-figure > .portal-code-block {
+  margin: 0;
+  background-color: var(--sl-color-gray-6);
+  font-size: var(--sl-text-code);
+}
+.portal-code-figure .portal-code span[style] {
+  color: var(--shiki-dark);
+}
+:root[data-theme="light"] .portal-code-figure .portal-code span[style] {
+  color: var(--shiki-light);
+}
+.portal-code-figure button {
+  font-family: inherit;
+}
+.portal-document-notebook,
+.portal-document-notebook:hover {
+  color: var(--ink);
+}
+.portal-document-notebook-head {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -0.5rem;
+}
+.portal-document-notebook-foot {
+  margin-top: 2.5rem;
+}
+:is(.portal-code-figure, .portal-overlay-root, .portal-overlay-root-top, .portal-dataset-tree-block) [hidden],
+.portal-code-figure[hidden] {
+  display: none !important;
+}

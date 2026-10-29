@@ -1,0 +1,24 @@
+---
+/**
+ * Starlight's <head>, plus what web/site.js needs on every page: its bundle,
+ * its stylesheet and the #wp-site configuration from .prepared/manifest.json.
+ * Without the manifest (Freva parts not prepared) none of it is emitted and
+ * the site works as plain documentation.
+ */
+import Default from "@astrojs/starlight/components/Head.astro";
+import freva from "virtual:waterpark/freva";
+
+// JSON inside <script>: "</script>" in a value must not end the element.
+const json = freva ? JSON.stringify(freva.config).replace(/</g, "\\u003c") : "";
+---
+
+<Default />
+{
+  freva && (
+    <>
+      <link rel="stylesheet" href={freva.styles} />
+      <script is:inline type="application/json" id="wp-site" set:html={json} />
+      <script is:inline type="module" src={freva.script} />
+    </>
+  )
+}

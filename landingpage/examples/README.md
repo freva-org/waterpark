@@ -63,8 +63,8 @@ demonstrate it rather than describing it.
    python scripts/build_examples.py --run --only 09
    just build
    ```
-5. Add the page to the `nav:` block in `mkdocs.yml`. The strict build fails
-   with a clear message if you forget.
+5. Nothing to register: the page joins the sidebar and the header menu by
+   itself, ordered by the number the file name starts with.
 6. Commit the figure and thumbnail in `assets/examples/` with the updated
    `examples.lock`. Figures are committed on purpose: the docs build stays
    offline and reproducible, and a changed plot arrives as a diff someone

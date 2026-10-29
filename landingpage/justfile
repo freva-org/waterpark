@@ -8,50 +8,82 @@
 # here works with this directory on its own, and from the root as
 # `just site::<recipe>`.
 #
-# tox still owns the build itself, because the copy-then-build dance in
-# [docs-prep] is genuinely tox's job and CI calls those envs directly.
-# These are thin wrappers so nobody has to remember the env names.
+# The site is Astro Starlight, built with npm; `npm run build` does the
+# whole build (generated pages, then astro), so these recipes add only what
+# npm cannot know: installing first, the empty API base for anything
+# published, and gh-pages. tox runs the Python jobs (shared pin, examples,
+# spelling). CI calls these same recipes.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 state_dir := env("STATE_DIR", source_directory() / ".dev")
 
+# Astro's minimum. Older versions fail with errors that do not say so.
+node_min := "22.23.4"
+
+# Every recipe below runs what it needs first, so pick the one you want and
+# nothing else:
+#
+#   install  ->  prepare  ->  serve
+#                         ->  build  ->  check
+#                                    ->  deploy
+
 [private]
 default:
     @just --list
 
-# WP_API_BASE reaches mkdocs through `!ENV` and ends up in the rendered
-# HTML. It must be empty for anything that gets published.
+# Check Node, then npm ci when package-lock.json or the Node major changed
+[private]
+install:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    have="$(node --version 2>/dev/null | sed 's/^v//')" || true
+    if [ -z "$have" ]; then
+        echo "node not found: install Node {{ node_min }} or newer" >&2
+        exit 1
+    fi
+    if [ "$(printf '%s\n%s\n' "{{ node_min }}" "$have" | sort -V | head -1)" != "{{ node_min }}" ]; then
+        echo "Node $have is too old: the site needs {{ node_min }} or newer ($(command -v node))" >&2
+        exit 1
+    fi
+    stamp=node_modules/.waterpark-install
+    want="$(sha256sum package-lock.json | cut -d' ' -f1) node-${have%%.*}"
+    if [ "$(cat "$stamp" 2>/dev/null)" != "$want" ]; then
+        echo "installing dependencies (package-lock.json or Node changed)"
+        npm ci --no-audit --no-fund
+        echo "$want" > "$stamp"
+    fi
 
-# Build the Freva parts (Python, notebook, tree, STAC and Data Browser) into .prepared/
+# WP_API_BASE and WP_LIST_UUID are read at build time and end up in the
+# rendered HTML. WP_API_BASE must be empty for anything that gets published:
+# in production the site and the API share an origin.
+
+# Build the Freva parts (Python, notebook, tree, STAC and Data Browser) into .prepared/; ~10 min the first time, seconds after
 [group('docs')]
-prepare *args:
-    [ -d node_modules ] || npm ci --no-audit --no-fund
+prepare *args: install
     ./scripts/fetch-wheels.sh || echo "no healpix-geo wheel: the examples that import it will not run in the browser"
     node scripts/prepare.mjs {{ args }}
 
 # Serve the docs at localhost:8000 with live reload
 [group('docs')]
-serve:
-    exec tox -e docs-serve
+serve: prepare
+    exec npm run dev
 
-# Build the site into ./site
+# Build the site into ./dist, internal links checked
 [group('docs')]
-build:
-    WP_API_BASE= tox -e docs
+build: prepare
+    WP_API_BASE= npm run build
 
-# Publish ./site to gh-pages (normally CI does this)
+# Publish ./dist to gh-pages as one commit, "docs: <sha>" unless a message is given
 [confirm("Publish to gh-pages by hand? CI normally does this. [y/N]")]
 [group('docs')]
-deploy:
-    WP_API_BASE= tox -e docs-deploy
+deploy message="": build
+    ./scripts/publish-gh-pages.sh dist {{ quote(message) }}
 
-# Everything CI runs: shared pin, examples freshness, strict build
+# Everything CI runs: shared pin, examples freshness, spelling, the build
 [group('docs')]
-check:
-    tox -e shared-check
-    tox -e examples-check
-    WP_API_BASE= tox -e docs
+check: build
+    tox -e shared-check,examples-check,spell
 
 # --- content maintenance ----------------------------------------------------
 
@@ -92,5 +124,6 @@ examples-check:
 # Remove build output and local state
 [group('docs')]
 clean:
-    rm -rf .build site site-data .prepared "{{ state_dir }}"
+    rm -rf dist .astro .cache .prepared "{{ state_dir }}"
+    [ ! -f src/content/docs/.gitignore ] || git clean -fqX src/content/docs
     @echo "cleaned"

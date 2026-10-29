@@ -118,8 +118,8 @@ doctor:
       {{ compose }} logs --tail 40 "$svc" 2>&1
       echo
     done
-    echo "### what mkdocs is actually serving from"
-    {{ compose }} exec -T docs sh -c 'ls -la /work/.build/data | head -20' 2>&1 || true
+    echo "### generated pages the docs container is serving"
+    {{ compose }} exec -T docs sh -c 'ls -la /work/src/content/generated | head -20' 2>&1 || true
 
 # Seed a local announcement so the banner can be tested (expires in 4h)
 [group('inspect')]
