@@ -7,6 +7,11 @@
  *
  * Drawn at build time from real HEALPix geometry (src/lib/healpix.ts), so
  * it ships as a static SVG with no script.
+ *
+ * Kept light enough for phones: cells are merged into one path per colour
+ * (a few dozen elements instead of ~700), and the fine level is its own
+ * layer, so its entrance fades one element on the GPU instead of animating
+ * hundreds of SVG paths, which made mobile browsers stop painting the page.
  */
 import { colour, field, ringPath } from "../lib/globe";
 import { cellBoundary, cellCentre, cells, distance, orthographic, type LonLat } from "../lib/healpix";
@@ -23,59 +28,89 @@ const project = orthographic(...VIEW);
 
 const path = (ring: LonLat[]) => ringPath(project, ring);
 
-const coarse: { d: string; fill: string; refined: boolean }[] = [];
-const fine: { d: string; fill: string; delay: number }[] = [];
+// Colours are quantised so cells can share a path; at 64 steps of a smooth
+// ramp the difference is invisible.
+const tone = (point: LonLat) => colour(Math.round(field(point) * 64) / 64);
+
+/** One path per colour: many cells, few elements. */
+function byColour(items: { d: string; fill: string }[]) {
+  const groups = new Map<string, string[]>();
+  for (const { d, fill } of items) groups.set(fill, [...(groups.get(fill) ?? []), d]);
+  return [...groups].map(([fill, ds]) => ({ fill, d: ds.join("") }));
+}
+
+const coarseCells: { d: string; fill: string }[] = [];
+const fineCells: { d: string; fill: string }[] = [];
+const regionCells: string[] = [];
 for (const [face, ix, iy] of cells(COARSE)) {
   const centre = cellCentre(COARSE, face, ix, iy);
   const d = path(cellBoundary(COARSE, face, ix, iy, 6));
   if (!d) continue;
-  const refined = distance(centre, FOCUS) < RADIUS;
-  coarse.push({ d, fill: colour(field(centre)), refined });
-  if (!refined) continue;
+  coarseCells.push({ d, fill: tone(centre) });
+  if (distance(centre, FOCUS) >= RADIUS) continue;
+  regionCells.push(d);
   for (let a = 0; a < RATIO; a++)
     for (let b = 0; b < RATIO; b++) {
       const jx = ix * RATIO + a;
       const jy = iy * RATIO + b;
-      const c = cellCentre(FINE, face, jx, jy);
       const dd = path(cellBoundary(FINE, face, jx, jy, 1));
-      if (dd) fine.push({ d: dd, fill: colour(field(c)), delay: Math.round((distance(c, FOCUS) / RADIUS) * 700) });
+      if (dd) fineCells.push({ d: dd, fill: tone(cellCentre(FINE, face, jx, jy)) });
     }
 }
-const faces = [...cells(1)].map(([f]) => path(cellBoundary(1, f, 0, 0, 24))).filter(Boolean) as string[];
-const region = coarse.filter((c) => c.refined);
+const coarse = byColour(coarseCells);
+const fine = byColour(fineCells);
+const faces = [...cells(1)].map(([f]) => path(cellBoundary(1, f, 0, 0, 24))).filter(Boolean).join("");
+const region = regionCells.join("");
+const VIEWBOX = "-1.06 -1.06 2.12 2.12";
+
+// Where the refined region's centre lands in the figure, in percent of the
+// box, for the reveal mask to grow from.
+const focus = project(FOCUS);
+const pct = (v: number) => `${(((v + 1.06) / 2.12) * 100).toFixed(1)}%`;
+const reveal = `--wp-reveal-x:${pct(focus.x)};--wp-reveal-y:${pct(focus.y)}`;
 ---
 
 <figure class="wp-globe">
-  <svg viewBox="-1.06 -1.06 2.12 2.12" role="img" aria-labelledby="wp-globe-title">
-    <title id="wp-globe-title">
-      A field on the HEALPix sphere, drawn with level 2 cells everywhere and level 5 cells over the North Atlantic and Europe.
-    </title>
-    <defs>
-      <clipPath id="wp-globe-clip"><circle r="1" /></clipPath>
-      <radialGradient id="wp-globe-shade" cx="-0.35" cy="-0.4" r="1.5" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stop-color="#fff" stop-opacity="0.1" />
-        <stop offset="0.6" stop-color="#fff" stop-opacity="0" />
-        <stop offset="1" stop-color="#000" stop-opacity="0.28" />
-      </radialGradient>
-    </defs>
-    <g clip-path="url(#wp-globe-clip)">
-      <circle r="1" class="sea" />
-      <g class="coarse">
-        {coarse.map((c) => <path d={c.d} fill={c.fill} />)}
+  <div class="layers">
+    <svg viewBox={VIEWBOX} role="img" aria-labelledby="wp-globe-title">
+      <title id="wp-globe-title">
+        A field on the HEALPix sphere, drawn with level 2 cells everywhere and level 5 cells over the North Atlantic and Europe.
+      </title>
+      <defs>
+        <clipPath id="wp-globe-clip"><circle r="1" /></clipPath>
+      </defs>
+      <g clip-path="url(#wp-globe-clip)">
+        <circle r="1" class="sea" />
+        <g class="coarse">
+          {coarse.map((c) => <path d={c.d} fill={c.fill} />)}
+        </g>
       </g>
-      <g class="fine">
-        {fine.map((c) => <path d={c.d} fill={c.fill} stroke={c.fill} style={`--d:${c.delay}ms`} />)}
+    </svg>
+    <svg viewBox={VIEWBOX} class="fine" style={reveal} aria-hidden="true">
+      <defs>
+        <clipPath id="wp-globe-clip-fine"><circle r="1" /></clipPath>
+      </defs>
+      <g clip-path="url(#wp-globe-clip-fine)">
+        {fine.map((c) => <path d={c.d} fill={c.fill} stroke={c.fill} />)}
       </g>
-      <g class="faces">
-        {faces.map((d) => <path d={d} />)}
+    </svg>
+    <svg viewBox={VIEWBOX} aria-hidden="true">
+      <defs>
+        <clipPath id="wp-globe-clip-top"><circle r="1" /></clipPath>
+        <radialGradient id="wp-globe-shade" cx="-0.35" cy="-0.4" r="1.5" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#fff" stop-opacity="0.1" />
+          <stop offset="0.6" stop-color="#fff" stop-opacity="0" />
+          <stop offset="1" stop-color="#000" stop-opacity="0.28" />
+        </radialGradient>
+      </defs>
+      <g clip-path="url(#wp-globe-clip-top)">
+        <path class="faces" d={faces} />
+        <path class="region" d={region} />
+        <circle r="1" fill="url(#wp-globe-shade)" />
       </g>
-      <g class="region">
-        {region.map((c) => <path d={c.d} />)}
-      </g>
-      <circle r="1" fill="url(#wp-globe-shade)" />
-    </g>
-    <circle r="1" class="rim" />
-  </svg>
+      <circle r="1" class="rim" />
+    </svg>
+  </div>
   <figcaption>
     <span class="item"><span class="key key-coarse"></span>Level 2, 192 cells for the globe</span>
     <span class="item"><span class="key key-fine"></span>Level 5, 64 cells inside each of those</span>
@@ -86,11 +121,18 @@ const region = coarse.filter((c) => c.refined);
   .wp-globe {
     margin: 0;
   }
+  .layers {
+    position: relative;
+  }
   svg {
     display: block;
     width: 100%;
     height: auto;
     overflow: visible;
+  }
+  .layers > svg + svg {
+    position: absolute;
+    inset: 0;
   }
   .sea {
     fill: var(--wp-globe-sea);
@@ -103,12 +145,12 @@ const region = coarse.filter((c) => c.refined);
   .fine path {
     stroke-width: 0.002;
   }
-  .faces path {
+  .faces {
     fill: none;
     stroke: var(--wp-cell-face);
     stroke-width: 0.01;
   }
-  .region path {
+  .region {
     fill: none;
     stroke: var(--wp-amber);
     stroke-width: 0.008;
@@ -120,15 +162,33 @@ const region = coarse.filter((c) => c.refined);
   }
 
   /* The one moment of motion: the fine level resolves outwards from the
-     centre of the region, as reading a finer level does. */
+     centre of the refined region, as reading a finer level does. One mask
+     on one element grows from that point; the cells themselves never
+     animate (animating each of them stalled phones). Where @property is
+     unknown the radius cannot be interpolated, and the fine level simply
+     appears. */
+  @property --wp-reveal {
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 150%;
+  }
   @media (prefers-reduced-motion: no-preference) {
-    .fine path {
-      animation: resolve 0.5s ease-out both;
-      animation-delay: calc(300ms + var(--d));
+    .fine {
+      --mask: radial-gradient(
+        circle at var(--wp-reveal-x) var(--wp-reveal-y),
+        #000 var(--wp-reveal),
+        transparent calc(var(--wp-reveal) + 8%)
+      );
+      -webkit-mask-image: var(--mask);
+      mask-image: var(--mask);
+      animation: resolve 0.9s ease-out 0.3s both;
     }
     @keyframes resolve {
       from {
-        opacity: 0;
+        --wp-reveal: 0%;
+      }
+      to {
+        --wp-reveal: 45%;
       }
     }
   }
