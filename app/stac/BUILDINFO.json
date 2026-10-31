@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "upstream": "@radiantearth/stac-browser",
+  "tag": "v5.1.0",
+  "commit": "c78b78f3434fdd34d4192f7044194dae6a15172d",
+  "license": "ISC",
+  "buildMode": "minimal",
+  "config": {
+    "pathPrefix": "/stac/",
+    "historyMode": "hash",
+    "catalogTitle": "STAC Browser"
+  },
+  "patches": [
+    {
+      "name": "0001-mount-into-the-portal-host-element.patch",
+      "digest": "sha256:9ba41efed23399dd6ad8e0c88c689492e661c90632bcfe3054da3771d7eac044"
+    },
+    {
+      "name": "0002-expose-init-for-re-entry.patch",
+      "digest": "sha256:5d3bd8d40329cc02c5ae69779d0f235412717d9eae26a79d1c214d34454b74e5"
+    },
+    {
+      "name": "0003-follow-the-host-theme.patch",
+      "digest": "sha256:cf490a322f0f79b2471ddbac2731373e2d50c630df316f0d5c5c9646b6696f9c"
+    },
+    {
+      "name": "0004-do-not-scroll-lock-the-host-document.patch",
+      "digest": "sha256:c4552ae0fe9d1d73aa73a1972de425956e87099d6ecb2f04f6e78fa727122f29"
+    },
+    {
+      "name": "0005-open-the-validation-report-in-a-new-tab.patch",
+      "digest": "sha256:72e7cd838e807c059eba6ad92193cdb0fe93aa68ac318b6094c1141f75379cc0"
+    },
+    {
+      "name": "0006-teleport-the-example-code-modal-into-the-embed.patch",
+      "digest": "sha256:0bcc56b0222832d61e1e1b5d1cbb05f2dcac614997a4f8bd751f732181ea2f0b"
+    },
+    {
+      "name": "0007-open-the-catalogue-description-expanded.patch",
+      "digest": "sha256:64567f9f827e5b8d16b45a26b7a4ee0fbdb6108b81b21860963f34d9da3c02ad"
+    },
+    {
+      "name": "0008-ask-before-fetching-a-third-party-basemap.patch",
+      "digest": "sha256:300de3057acf09e85dcc4493b28386fa6e51b4383d972f7df7f5a39b3580a8f6"
+    },
+    {
+      "name": "0009-place-the-portal-introduction-in-the-catalogue-column.patch",
+      "digest": "sha256:4506ab27bcfea05644eb51f9eaee17bd75a02c943f756643764f8ff3bd4f59e6"
+    }
+  ],
+  "embed": {
+    "entry": "assets/index-C8evNBCs.js",
+    "styles": [
+      "assets/index-h3TzGqWV.css"
+    ],
+    "mountId": "stac-browser-mount"
+  },
+  "licenseFiles": [
+    "LICENSES/stac-browser-ISC.txt",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "treeDigest": "sha256:4520c5828068e1e13f360b536807711bf7aa1c792f54d63035d694915cf90ac1"
+}

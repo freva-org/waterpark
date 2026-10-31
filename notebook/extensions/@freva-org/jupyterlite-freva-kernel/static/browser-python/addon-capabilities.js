@@ -1,0 +1,1 @@
+import{OPTIONAL_ADDON_IDS as r}from"./worker/addon-pins.generated.js";export function supportsOptional(n){return r.includes(n)}

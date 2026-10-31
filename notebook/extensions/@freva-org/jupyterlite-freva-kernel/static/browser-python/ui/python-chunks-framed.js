@@ -1,0 +1,1 @@
+let pending=null;export const loadFramedChunks=()=>pending||(pending=import("@freva-org/freva-client-terminal").then(n=>({createTerminalWindow:n.createTerminalWindow,loadSessions:()=>import("../session/index.js").then(n=>({session:n}))})).catch(n=>{throw pending=null,n}));

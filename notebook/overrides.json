@@ -1,0 +1,57 @@
+{
+  "@freva-org/jupyterlite-freva-data:plugin": {
+    "siteName": "Waterpark",
+    "title": "Waterpark data",
+    "iconSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" width=\"24\" height=\"24\" fill=\"#26a69a\"><rect x=\"3\" y=\"3\" width=\"6\" height=\"4\" rx=\"0.5\"/><rect x=\"11\" y=\"10\" width=\"10\" height=\"4\" rx=\"0.5\"/><rect x=\"11\" y=\"17\" width=\"10\" height=\"4\" rx=\"0.5\"/><path d=\"M5 7v12h6M5 12h6\" fill=\"none\" stroke=\"#26a69a\" stroke-width=\"2\"/></svg>\n",
+    "dataUrl": "freva-data/panel.9a01b29a9b84.json",
+    "dataSha256": "9a01b29a9b845e5cccf2b2b0c424067a8f6f0de121707f899b4bc52fbf01ba7c",
+    "kernelName": "freva-python",
+    "defaultAction": "open-in-notebook",
+    "seedNotebooks": [
+      {
+        "path": "era5_july_2021.ipynb",
+        "title": "Waterpark in a notebook: ERA5, July 2021"
+      },
+      {
+        "path": "examples/01_first_map.ipynb",
+        "title": "A map of one month"
+      },
+      {
+        "path": "examples/02_global_mean.ipynb",
+        "title": "The global mean is just a mean"
+      },
+      {
+        "path": "examples/03_region_bbox.ipynb",
+        "title": "Cutting out a region"
+      },
+      {
+        "path": "examples/04_zonal_mean.ipynb",
+        "title": "Zonal means come for free"
+      },
+      {
+        "path": "examples/05_meridional_mean.ipynb",
+        "title": "Meridional means, and why they are harder"
+      },
+      {
+        "path": "examples/06_hovmoeller.ipynb",
+        "title": "A Hovmöller diagram"
+      },
+      {
+        "path": "examples/07_pyramid_levels.ipynb",
+        "title": "Moving up and down the pyramid"
+      },
+      {
+        "path": "examples/08_cross_dataset.ipynb",
+        "title": "Comparing two datasets without regridding"
+      }
+    ],
+    "gridlook": true,
+    "startNotebook": "era5_july_2021.ipynb",
+    "launcher": {
+      "newNotebook": true,
+      "browse": true,
+      "examples": true,
+      "ask": false
+    }
+  }
+}
