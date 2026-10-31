@@ -1,4 +1,4 @@
-<!-- Vendored from freva-org/grid-doctor@bfc62ec4 (docs/shared/high-level-access.md).
+<!-- Vendored from freva-org/grid-doctor@bafa22a9 (docs/shared/high-level-access.md).
      Do not edit here: changes belong upstream and will be overwritten
      by scripts/sync_shared.py. -->
 
