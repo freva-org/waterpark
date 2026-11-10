@@ -1,4 +1,4 @@
-<!-- Vendored from freva-org/grid-doctor@bafa22a9 (docs/shared/high-level-access.md).
+<!-- Vendored from freva-org/grid-doctor@67dbc392 (docs/shared/high-level-access.md).
      Do not edit here: changes belong upstream and will be overwritten
      by scripts/sync_shared.py. -->
 
@@ -13,8 +13,8 @@ two ways, and both change how you load them:
    about 5.2 × 10¹⁰ entries; materialised `latitude`/`longitude` arrays
    would cost hundreds of gigabytes while carrying no information,
    because HEALPix coordinates are a pure function of the cell index.
-   These stores carry only the `crs` variable and the `healpix_*`
-   attributes (`grid_doctor_implicit_coords = 1` marks them), and
+   These stores carry only the `crs` grid mapping variable
+   (`grid_doctor_implicit_coords = 1` marks them), and
    coordinates are computed on the fly for whatever cells you actually
    read.
 2. **All access is region-driven.**  Nobody loads the full cell
