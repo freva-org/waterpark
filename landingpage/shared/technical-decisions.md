@@ -1,4 +1,4 @@
-<!-- Vendored from freva-org/grid-doctor@67dbc392 (docs/shared/technical-decisions.md).
+<!-- Vendored from freva-org/grid-doctor@066038c3 (docs/shared/technical-decisions.md).
      Do not edit here: changes belong upstream and will be overwritten
      by scripts/sync_shared.py. -->
 
