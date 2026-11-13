@@ -4,6 +4,7 @@
     "cordex",
     "dyamond",
     "eerie",
+    "global-hackathon-27",
     "icdc",
     "icon-dream",
     "nextgems",
@@ -32,6 +33,9 @@
       "title": "EERIE",
       "label": "Eddy-Rich Earth System Models",
       "href": "https://dataviewer.eerie-project.eu/home/eddy-rich"
+    },
+    "global-hackathon-27": {
+      "title": "global-hackathon-27"
     },
     "icdc": {
       "title": "ICDC",
