@@ -1,0 +1,1 @@
+export const MAX_WORKSPACE_FILES=1024;export const NOTICE_MIME="application/vnd.freva.notice+json";export class BrowserPythonError extends Error{code;reason;cleanupErrors;constructor(o,r,e){super(r,e?.cause===void 0?void 0:{cause:e.cause}),this.name="BrowserPythonError",this.code=o,e?.reason!==void 0&&(this.reason=e.reason)}}

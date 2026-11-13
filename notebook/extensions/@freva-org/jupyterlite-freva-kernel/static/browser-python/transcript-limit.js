@@ -1,0 +1,1 @@
+export const MAX_TRANSCRIPT_CHARS=2e6;

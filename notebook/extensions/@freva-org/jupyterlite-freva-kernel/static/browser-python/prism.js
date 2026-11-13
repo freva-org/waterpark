@@ -1,0 +1,1 @@
+import o from"prismjs/components/prism-core.js";export default o;
