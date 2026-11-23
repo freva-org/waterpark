@@ -4,8 +4,8 @@
 # tell a hand edit from a sync without going to the network.
 
 [shared]
-commit = "c694fc8e8cf3c566b603d49498d27512cb178b27"
+commit = "71547612e84c3b80f2875bd28f3c5d91fd4974c9"
 
 [shared.files]
-"high-level-access.md" = "6999986d3a6967577a7b92432d1e6e0f6061a66bd0db94219f4bfb78dd0ee7cc"
-"technical-decisions.md" = "bdc028bfe958fa733a4f79d6f26e2701733edd444f7d8c8c830709d481056890"
+"high-level-access.md" = "71c782dd353258567a5c77ee4665d993ecf571f52354efd62920ae8b35f3ea67"
+"technical-decisions.md" = "f90027998165dec6bc6c24bea8a21e7ce23ea59b6849de542f843a47ea41d1e2"
