@@ -1,0 +1,1 @@
+var c=1024,o="application/vnd.freva.notice+json",n=class extends Error{code;reason;cleanupErrors;constructor(r,s,e){super(s,e?.cause===void 0?void 0:{cause:e.cause}),this.name="BrowserPythonError",this.code=r,e?.reason!==void 0&&(this.reason=e.reason)}};export{c as a,o as b,n as c};
